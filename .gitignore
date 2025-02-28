@@ -4,3 +4,4 @@ mlruns/
 
 .env
 poetry.lock
+slurm-*.out
