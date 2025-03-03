@@ -1,6 +1,7 @@
 import pandas as pd
 import dspy
 import json
+import litellm
 
 def prepare_dataset(data_path, input_key, data_size=100):
 
@@ -135,7 +136,7 @@ Here are some things to keep in mind:
 
     return task_description, final_task_program, trainset, valset, requirement_path
 
-def prepare_data_explain_code():
+def prepare_data_explain_code_dep():
     data_path = "data/humaneval.csv"
     input_key = "code"
     requirement_path = "data/requirements/requirements_code_v0.json"
@@ -151,6 +152,35 @@ def prepare_data_explain_code():
         output = dspy.OutputField(desc="Explanation of the code snippet.")
 
     return task_description, TaskProgram, trainset, valset, requirement_path
+
+def prepare_data_explain_code():
+    data_path = "data/leetcode-py-all.csv"
+    input_key = "python_solution"
+    requirement_path = ""
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
+
+    task_description = "Explain the code snippet."
+
+    prompt = (
+        "Your task is to take the code snippet provided and explain it in simple, easy-to-understand language. " 
+        "Break down the code's functionality, purpose, and key components. Use analogies, examples, and plain terms to make the explanation accessible to someone with minimal coding knowledge. "
+        "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
+    )
+
+    def generate_explanation(lm, python_solution):
+        response = litellm.completion(
+            model=lm.model,
+            messages=[
+                {"role": "system", "content": prompt},
+                {"role": "user", "content": python_solution}
+            ],
+            **lm.kwargs
+        )
+        output = response.choices[0].message.content
+        return dspy.Example(**{input_key: python_solution}, output=output)
+
+    return task_description, generate_explanation, trainset, valset, requirement_path
 
 def prepare_data(
     task_name,
@@ -169,6 +199,8 @@ def prepare_data(
         case "arxiv":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_arxiv_summarization(configs)
         case "code":
+            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_dep()
+        case "lc":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code()
         case _:
             task_description, TaskProgram, trainset, valset, requirement_path = "", None, [], [], ""
