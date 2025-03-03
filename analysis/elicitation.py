@@ -98,9 +98,9 @@ class InferRequirementsFromTask(dspy.Module):
 
 class InferRequirementsFromData(dspy.Module):
 
-    def __init__(self, task_description):
-        self.lm = dspy.LM('openai/gpt-4o-2024-08-06')
-        self.judge_lm = dspy.LM('openai/gpt-4o-mini-2024-07-18')
+    def __init__(self, task_description, lm, judge_lm):
+        self.lm = lm
+        self.judge_lm = judge_lm
         self.task_description = task_description
         self.extract = use_lm(self.lm)(dspy.Predict(JustifyResponseAndExtractRequirements))
         self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements))
@@ -141,10 +141,9 @@ class InferRequirementsFromData(dspy.Module):
         return all_requirements
 class InferRequirementsFromCompareData(dspy.Module):
 
-    def __init__(self, task_description):
-        self.lm = dspy.LM('openai/gpt-4o-2024-08-06')
-        self.judge_lm = dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=10000)
-        self.judge_lm.kwargs['max_completion_tokens'] = self.judge_lm.kwargs.pop('max_tokens')
+    def __init__(self, task_description, lm, judge_lm):
+        self.lm = lm
+        self.judge_lm = judge_lm
         self.task_description = task_description
         self.compare = use_lm(self.lm)(dspy.Predict(CompareModelOutputs))
         self.summarize = use_lm(self.judge_lm)(dspy.Predict(SummarizeDifferences))
@@ -172,8 +171,8 @@ class InferRequirementsFromCompareData(dspy.Module):
         
 class InferRequirements(dspy.Module):
 
-    def __init__(self, task_description):
-        self.lm = dspy.LM('openai/gpt-4o-2024-08-06')
+    def __init__(self, task_description, lm):
+        self.lm = lm
         self.task_description = task_description
         self.suggest = use_lm(self.lm)(dspy.Predict(BrainstormRequirements))
         self.identify = use_lm(self.lm)(dspy.Predict(IdentifyMistakes))
