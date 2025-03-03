@@ -12,12 +12,15 @@ import copy
 def use_lm(lm):
     def decorator(program):
         def wrapper(*args, **kwargs):
-            with dspy.context(lm=lm):
-                try:
-                    return program(*args, **kwargs)
-                except Exception as e:
-                    print(f"Error: {e}")
-                    return dspy.Example(output="")
+            try:
+                if type(program) == dspy.Module:
+                    with dspy.context(lm=lm):
+                            return program(*args, **kwargs)
+                else:
+                    return program(lm=lm, *args, **kwargs)
+            except Exception as e:
+                print(f"Error: {e}")
+                return dspy.Example(output="")
         return wrapper
     return decorator
 
@@ -60,7 +63,6 @@ def find_nearest_requirement(requirement, requirements):
     for req_embedding in requirements_embedding:
         distances.append(np.dot(requirement_embedding, req_embedding) / (np.linalg.norm(requirement_embedding) * np.linalg.norm(req_embedding)))
     return requirements[np.argmax(distances)]
-
 
 def cluster_requirements(requirements, num_clusters=40):
     
