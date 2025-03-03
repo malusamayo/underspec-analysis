@@ -178,7 +178,8 @@ def prepare_data_explain_code():
             **lm.kwargs
         )
         output = response.choices[0].message.content
-        return dspy.Example(**{input_key: python_solution}, output=output)
+        outputs = [response.choices[i].message.content for i in range(len(response.choices))]
+        return dspy.Example(**{input_key: python_solution}, output=output, outputs=outputs)
 
     return task_description, generate_explanation, trainset, valset, requirement_path
 

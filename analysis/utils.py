@@ -9,7 +9,7 @@ import pandas as pd
 import tqdm
 import copy
 
-def use_lm(lm):
+def use_lm(lm, n=1):
     def decorator(program):
         def wrapper(*args, **kwargs):
             try:
@@ -17,6 +17,7 @@ def use_lm(lm):
                     with dspy.context(lm=lm):
                             return program(*args, **kwargs)
                 else:
+                    lm.kwargs['n'] = n
                     return program(lm=lm, *args, **kwargs)
             except Exception as e:
                 print(f"Error: {e}")
@@ -24,11 +25,11 @@ def use_lm(lm):
         return wrapper
     return decorator
 
-def batch_inference(program, args_list) -> List[Any]:
+def batch_inference(program, args_list, max_workers=32) -> List[Any]:
     futures = {}
     results = [None] * len(args_list)
     
-    with ThreadPoolExecutor(max_workers=32) as executor:
+    with ThreadPoolExecutor(max_workers=max_workers) as executor:
         for i, args in enumerate(args_list):
             future = executor.submit(
                 program,
@@ -42,14 +43,16 @@ def batch_inference(program, args_list) -> List[Any]:
             results[index] = result
     return results
 
-def run_model(program, examples):
+def run_model(program, examples, max_workers=32):
     examples = copy.deepcopy(examples)
     results = batch_inference(
         program,
-        [example.inputs().toDict() for example in examples]
+        [example.inputs().toDict() for example in examples],
+        max_workers=max_workers,
     )
     for example, result in zip(examples, results):
         example.output = result.output
+        example.outputs = result.outputs
     return examples
 
 def find_nearest_requirement(requirement, requirements):
