@@ -4,6 +4,7 @@ import copy
 import dspy.predict
 import litellm
 from typing import List, Dict, Any
+from pydantic import BaseModel
 from .textgrad_optimizer import TextGradOptimizer
 from .utils import use_lm, batch_inference
 from .judge import IdentifyMistakes
@@ -62,14 +63,30 @@ Examples:
     model_output_b = dspy.InputField(desc="The second model output")
     differences: List[str] = dspy.OutputField(desc="List of differences between the two model outputs")
 
+class CompareSingleModelOutputs(dspy.Signature):
+    """You are a reviewer who is comparing a few model outputs. Analyze what is consistent across all outputs and what is different across them -- consider different aspects like length, style, content, structure, etc.
+Notice that each output is generated for a different input. In your analysis, focus on the differences that are not caused by the input but rather differences in the model's behavior."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    model_outputs: List[str] = dspy.InputField(desc="List of model outputs")
+    similarities_analysis: str = dspy.OutputField(desc="Analysis of consistencies across the model outputs")
+    similarities: List[str] = dspy.OutputField(desc="List of consistencies across the model outputs")
+    differences_analysis: str = dspy.OutputField(desc="Analysis of differences across the model outputs")
+    differences: List[str] = dspy.OutputField(desc="List of broad distinctions across the model outputs")
+
+class DiffItem(BaseModel):
+    """A difference between two model outputs."""
+    difference_description: str
+    mentions: List[int]
+
 class SummarizeDifferences(dspy.Signature):
-    """Given a list of differences between two model outputs, first summarize the differences into key high-level differences. Then expand the differences into a list of requirements for each model respectively."""
+    """Given a list of differences across model outputs, extract the most frequent key differences. For each key difference, provide a description and the examples where it occurs."""
     
     task_description = dspy.InputField(desc="Description of the task")
-    differences = dspy.InputField(desc="List of example-level differences between two model outputs")
-    summary: List[str] = dspy.OutputField(desc="A summary list of the key high-level differences between the two model outputs")
-    requirements_a: List[str] = dspy.OutputField(desc="A list of requirements for the first model output based on the summary")
-    requirements_b: List[str] = dspy.OutputField(desc="A list of requirements for the second model output based on the summary")
+    differences = dspy.InputField(desc="List of example-level differences across model outputs")
+    key_differences: List[DiffItem] = dspy.OutputField(desc="A summary of the key differences across two model outputs")
+    # requirements_a: List[str] = dspy.OutputField(desc="A list of requirements for the first model output based on the summary")
+    # requirements_b: List[str] = dspy.OutputField(desc="A list of requirements for the second model output based on the summary")
 
 class BrainstormRequirements(dspy.Signature):
     """Given a task description, brainstorm a list of requirements that a model output should satisfy when performing the task."""
@@ -145,29 +162,41 @@ class InferRequirementsFromCompareData(dspy.Module):
         self.lm = lm
         self.judge_lm = judge_lm
         self.task_description = task_description
-        self.compare = use_lm(self.lm)(dspy.Predict(CompareModelOutputs))
+        self.compare = use_lm(self.lm)(dspy.ChainOfThought(CompareModelOutputs))
+        self.compare_single = use_lm(self.lm)(dspy.Predict(CompareSingleModelOutputs))
         self.summarize = use_lm(self.judge_lm)(dspy.Predict(SummarizeDifferences))
 
 
-    def forward(self, examples_a, examples_b, n=10):
-        
-        results = batch_inference(self.compare, [
-            {"task_description": self.task_description, 
-             "model_output_a": example_a.output,
-            "model_output_b": example_b.output} for (example_a, example_b) in zip(examples_a, examples_b)
-        ])
-
+    def forward(self, examples_a, examples_b=None, n=10):
         all_differences = []
+        ## if examples_b is not provided, compare the examples to themselves
+        if examples_b == None:
+            # every five examples, compare them to themselves
+            results = batch_inference(self.compare_single, [
+                {"task_description": self.task_description, 
+                 "model_outputs": example.outputs, } for example in examples_a # [example.output for example in examples_a[i:i+5]]} for i in range(0, len(examples_a), 5)
+            ])
 
-        for (example_a, example_b), result in zip(zip(examples_a, examples_b), results):
-            example_a.differences = result.differences
-            example_b.differences = result.differences
-            all_differences.extend(result.differences)
+            for diff in results:
+                all_differences.extend(diff.differences)
+        
+        else:
+        
+            results = batch_inference(self.compare, [
+                {"task_description": self.task_description, 
+                "model_output_a": example_a.output,
+                "model_output_b": example_b.output} for (example_a, example_b) in zip(examples_a, examples_b)
+            ])
+
+            for (example_a, example_b), result in zip(zip(examples_a, examples_b), results):
+                example_a.differences = result.differences
+                example_b.differences = result.differences
+                all_differences.extend(result.differences)
 
         # summarize the differences
         result = self.summarize(task_description=self.task_description, differences=all_differences)
 
-        return result.summary, result.requirements_a + result.requirements_b
+        return result.key_differences
         
 class InferRequirements(dspy.Module):
 
