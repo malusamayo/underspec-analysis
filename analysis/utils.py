@@ -15,7 +15,7 @@ def use_lm(lm, n=1):
             try:
                 if type(program) == dspy.Module:
                     with dspy.context(lm=lm):
-                            return program(*args, **kwargs)
+                        return program(*args, **kwargs)
                 else:
                     lm.kwargs['n'] = n
                     return program(lm=lm, *args, **kwargs)
@@ -94,3 +94,8 @@ def cluster_requirements(requirements, num_clusters=40):
         for req in subset:
             print(f"  - {req}")
         print()
+
+def requirements_to_str(requirements):
+    if len(requirements) == 1:
+        return f" {requirements[0]}"
+    return "\n\nFollow the following requirements:\n" + "\n".join([f"- {req}" for req in requirements])

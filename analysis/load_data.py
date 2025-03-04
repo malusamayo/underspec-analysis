@@ -2,6 +2,29 @@ import pandas as pd
 import dspy
 import json
 import litellm
+from functools import partial
+
+class TaskProgram:
+    def __init__(self, prompt, input_key, lm, n=1):
+        self.lm = lm
+        self.n = n
+        self.prompt = prompt
+        self.input_key = input_key
+
+    def __call__(self, **kwargs):
+        input = kwargs.get(self.input_key)
+        response = litellm.completion(
+            model=self.lm.model,
+            messages=[
+                {"role": "system", "content": self.prompt},
+                {"role": "user", "content": input}
+            ],
+            n=self.n,
+            **self.lm.kwargs
+        )
+        output = response.choices[0].message.content
+        outputs = [response.choices[i].message.content for i in range(len(response.choices))]
+        return dspy.Example(**{self.input_key: input}, output=output, outputs=outputs)    
 
 def prepare_dataset(data_path, input_key, data_size=100):
 
@@ -168,20 +191,7 @@ def prepare_data_explain_code():
         "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
     )
 
-    def generate_explanation(lm, python_solution):
-        response = litellm.completion(
-            model=lm.model,
-            messages=[
-                {"role": "system", "content": prompt},
-                {"role": "user", "content": python_solution}
-            ],
-            **lm.kwargs
-        )
-        output = response.choices[0].message.content
-        outputs = [response.choices[i].message.content for i in range(len(response.choices))]
-        return dspy.Example(**{input_key: python_solution}, output=output, outputs=outputs)
-
-    return task_description, generate_explanation, trainset, valset, requirement_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
 
 def prepare_data(
     task_name,
