@@ -13,12 +13,8 @@ def use_lm(lm, n=1):
     def decorator(program):
         def wrapper(*args, **kwargs):
             try:
-                if type(program) == dspy.Module:
-                    with dspy.context(lm=lm):
-                        return program(*args, **kwargs)
-                else:
-                    lm.kwargs['n'] = n
-                    return program(lm=lm, *args, **kwargs)
+                with dspy.context(lm=lm):
+                    return program(*args, **kwargs)
             except Exception as e:
                 print(f"Error: {e}")
                 return dspy.Example(output="")
