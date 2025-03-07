@@ -57,16 +57,13 @@ Then, compare the two model outputs based on how many requirements each output s
 
 
 class LLMJudge(dspy.Module):
-    def __init__(self, task_description, judge_lm=None):
-        if judge_lm is None:
-            self.judge_lm = dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=10000)
-            self.judge_lm.kwargs['max_completion_tokens'] = self.judge_lm.kwargs.pop('max_tokens')
-        else:
-            self.judge_lm = judge_lm
+    def __init__(self, task_description, lm, max_workers=32):
+        self.lm = lm
         self.task_description = task_description
-        self.evaluator = use_lm(self.judge_lm)(dspy.Predict(EvaluateRequirement))
-        self.aggregate_evaluator = use_lm(self.judge_lm)(dspy.Predict(IdentifyMistakes))
-        self.compare_evaluator = use_lm(self.judge_lm)(dspy.Predict(CompareModelOutputsWithGuideline))
+        self.max_workers = max_workers
+        self.evaluator = use_lm(self.lm)(dspy.Predict(EvaluateRequirement))
+        self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(IdentifyMistakes))
+        self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
 
     def evaluate_requirement(self, example, requirement, omit_input=False):
         return self.evaluator(task_description=self.task_description, 
@@ -99,7 +96,8 @@ class LLMJudge(dspy.Module):
 
         results = batch_inference(
             self.compare_outputs,
-            [{"example_a": example_a, "example_b": example_b, "guideline": requirements} for example_a, example_b, _ in permuations]
+            [{"example_a": example_a, "example_b": example_b, "guideline": requirements} for example_a, example_b, _ in permuations],
+            max_workers=self.max_workers
         )
         # calculate win rate, mapping permutations back
         win_rate_A = sum([(result.better_output == 'A' and not is_permutated) or (result.better_output == 'B' and is_permutated) 
@@ -128,7 +126,8 @@ class LLMJudge(dspy.Module):
         if aggregate:        
             results = batch_inference(
                 self.evaluate_guideline,
-                [{"example": example, "guideline": requirements} for example in examples]
+                [{"example": example, "guideline": requirements} for example in examples],
+                max_workers=self.max_workers
             )
             for example, result in zip(examples, results):
                 example.evaluation_result = {
@@ -140,7 +139,8 @@ class LLMJudge(dspy.Module):
         else:
             results = batch_inference(
                 self.evaluate_requirement,
-                [{"example": example, "requirement": requirement} for requirement in requirements for example in examples]
+                [{"example": example, "requirement": requirement} for requirement in requirements for example in examples],
+                max_workers=self.max_workers
             )
             
             for i, result in enumerate(results):
