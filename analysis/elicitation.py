@@ -51,21 +51,19 @@ class GroupRequirements(dspy.Signature):
 #     requirement = dspy.InputField(desc="The requirement")
 #     evaluation_plan = dspy.OutputField(desc="Evaluation plan for the requirement")
 
-class CompareModelOutputs(dspy.Signature):
-    """You are a reviewer who is comparing two model outputs. List all differences of these two outputs -- consider different aspects like length, style, content, structure, etc.
-
-Examples:
-- Model Output A mention references but Model Output B does not
-- Model Output A uses significantly more formulas and equations than Model Output B"""
+class CompareTwoModelOutputs(dspy.Signature):
+    """"You are a reviewer who is comparing a few model outputs. Analyze what is consistent across all outputs and what is different across them -- consider different aspects like length, style, content, structure, format, etc."""
 
     task_description = dspy.InputField(desc="Description of the task")
     model_output_a = dspy.InputField(desc="The first model output")
     model_output_b = dspy.InputField(desc="The second model output")
-    differences: List[str] = dspy.OutputField(desc="List of differences between the two model outputs")
+    similarities_analysis: str = dspy.OutputField(desc="Analysis of consistencies across the model outputs")
+    similarities: List[str] = dspy.OutputField(desc="List of consistencies across the model outputs")
+    differences_analysis: str = dspy.OutputField(desc="Analysis of differences across the model outputs")
+    differences: List[str] = dspy.OutputField(desc="List of broad distinctions across the model outputs")
 
-class CompareSingleModelOutputs(dspy.Signature):
-    """You are a reviewer who is comparing a few model outputs. Analyze what is consistent across all outputs and what is different across them -- consider different aspects like length, style, content, structure, etc.
-Notice that each output is generated for a different input. In your analysis, focus on the differences that are not caused by the input but rather differences in the model's behavior."""
+class CompareMultiModelOutputs(dspy.Signature):
+    """You are a reviewer who is comparing a few model outputs. Analyze what is consistent across all outputs and what is different across them -- consider different aspects like length, style, content, structure, format, etc."""
 
     task_description: str = dspy.InputField(desc="Description of the task")
     model_outputs: List[str] = dspy.InputField(desc="List of model outputs")
@@ -80,18 +78,100 @@ class DiffItem(BaseModel):
     mentions: List[int]
 
 class SummarizeDifferences(dspy.Signature):
-    """Given a list of differences across model outputs, extract the most frequent key differences. For each key difference, provide a description and the examples where it occurs."""
+    """Given a list of differences across model outputs, extract the most frequent 10 key differences. For each key difference, provide a description and the examples where it occurs."""
     
-    task_description = dspy.InputField(desc="Description of the task")
-    differences = dspy.InputField(desc="List of example-level differences across model outputs")
+    task_description: str = dspy.InputField(desc="Description of the task")
+    differences: List[str] = dspy.InputField(desc="List of example-level differences across model outputs")
     key_differences: List[DiffItem] = dspy.OutputField(desc="A summary of the key differences across two model outputs")
     # requirements_a: List[str] = dspy.OutputField(desc="A list of requirements for the first model output based on the summary")
     # requirements_b: List[str] = dspy.OutputField(desc="A list of requirements for the second model output based on the summary")
+
+class ExtractRequirementsFromPrompt(dspy.Signature):
+    """You are an experienced requirements engineer. Your goal is to extract a list of atomic requirements from the provided prompt.
+
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
+- Requirements should be generally applicable for responses to that task, not referring to any specific response
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+
+Here are some bad requirements:
+- The output should be interesting. - This is subjective
+- The output should discuss cats in fewer than 280 characters. - This overloads multiple aspects
+- The output should be helpful and harmless. - This is overly general
+
+Here are some good atomic requirements:
+- The output should discuss cats.
+- The output should be fewer than 280 characters.
+- The output should contain at least 3 references."""
+
+    prompt: str = dspy.InputField(desc="Task prompt")
+    requirements: List[str] = dspy.OutputField(desc="A list of requirements")
+
+class RephraseDiffsToRequirements(dspy.Signature):
+    """You are an experienced requirements engineer. You observe that there are lots of divergent behaviors among model outputs.
+From this list of differences across model outputs, your goal is to extract a list of atomic requirements that specify desired behaviors.
+These requirements should be consistent with each other without contradictions and complementary to existing requirements.
+
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
+- Requirements should be generally applicable for responses to that task, not referring to any specific response
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+- The requirements should be consistent with each other without contradictions
+- The requirements should not overlap with existing requirements
+
+Here are some bad requirements:
+- The output should be interesting. - This is subjective
+- The output should discuss cats in fewer than 280 characters. - This overloads multiple aspects
+- The output should be helpful and harmless. - This is overly general
+
+Here are some good atomic requirements:
+- The output should discuss cats.
+- The output should be fewer than 280 characters.
+- The output should contain at least 3 references."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    existing_requirements: List[str] = dspy.InputField(desc="List of existing requirements")
+    differences: List[DiffItem] = dspy.InputField(desc="List of differences")
+    n: int = dspy.InputField(desc="Number of requirements to extract")
+    requirements: List[str] = dspy.OutputField(desc="List of requirements")
 
 class BrainstormRequirements(dspy.Signature):
     """Given a task description, brainstorm a list of requirements that a model output should satisfy when performing the task."""
 
     task_description: str = dspy.InputField(desc="Description of the task")
+    n: int = dspy.InputField(desc="Number of requirements to brainstorm")
+    requirements: List[str] = dspy.OutputField(desc="A list of requirements")
+
+class BrainstormAdditionalRequirements(dspy.Signature):
+    """You are an experienced requirements engineer. Your goal is to brainstorm a list of atomic requirements that augment the existing requirements.
+These requirements should be consistent with each other without contradictions and complementary to existing requirements.
+    
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
+- Requirements should be generally applicable for responses to that task, not referring to any specific response
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+
+Here are some bad requirements:
+- The output should be interesting. - This is subjective
+- The output should discuss cats in fewer than 280 characters. - This overloads multiple aspects
+- The output should be helpful and harmless. - This is overly general
+
+Here are some good atomic requirements:
+- The output should discuss cats.
+- The output should be fewer than 280 characters.
+- The output should contain at least 3 references."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    existing_requirements: List[str] = dspy.InputField(desc="List of existing requirements")
     n: int = dspy.InputField(desc="Number of requirements to brainstorm")
     requirements: List[str] = dspy.OutputField(desc="A list of requirements")
 
@@ -162,16 +242,17 @@ class InferRequirementsFromCompareData(dspy.Module):
         self.lm = lm
         self.judge_lm = judge_lm
         self.task_description = task_description
-        self.compare = use_lm(self.lm)(dspy.ChainOfThought(CompareModelOutputs))
+        self.compare = use_lm(self.lm)(dspy.Predict(CompareTwoModelOutputs))
         self.compare_single = use_lm(self.lm)(dspy.Predict(CompareSingleModelOutputs))
-        self.summarize = use_lm(self.judge_lm)(dspy.Predict(SummarizeDifferences))
+        self.summarize = use_lm(self.lm)(dspy.Predict(SummarizeDifferences))
+        self.extract = use_lm(self.lm)(dspy.Predict(ExtractRequirementsFromPrompt))
+        self.rephrase = use_lm(self.lm)(dspy.ChainOfThought(RephraseDiffsToRequirements))
 
 
-    def forward(self, examples_a, examples_b=None, n=10):
+    def forward(self, examples_a, examples_b=None, existing_requirements=[], n=10):
         all_differences = []
         ## if examples_b is not provided, compare the examples to themselves
         if examples_b == None:
-            # every five examples, compare them to themselves
             results = batch_inference(self.compare_single, [
                 {"task_description": self.task_description, 
                  "model_outputs": example.outputs, } for example in examples_a # [example.output for example in examples_a[i:i+5]]} for i in range(0, len(examples_a), 5)
@@ -196,7 +277,13 @@ class InferRequirementsFromCompareData(dspy.Module):
         # summarize the differences
         result = self.summarize(task_description=self.task_description, differences=all_differences)
 
-        return result.key_differences
+        requirements = self.rephrase(
+            task_description=self.task_description, 
+            existing_requirements=existing_requirements, 
+            differences=result.key_differences,
+            n=n).requirements
+
+        return requirements
         
 class InferRequirements(dspy.Module):
 
