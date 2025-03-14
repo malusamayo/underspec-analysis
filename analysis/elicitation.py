@@ -243,7 +243,7 @@ class InferRequirementsFromCompareData(dspy.Module):
         self.judge_lm = judge_lm
         self.task_description = task_description
         self.compare = use_lm(self.lm)(dspy.Predict(CompareTwoModelOutputs))
-        self.compare_single = use_lm(self.lm)(dspy.Predict(CompareSingleModelOutputs))
+        self.compare_mul = use_lm(self.lm)(dspy.Predict(CompareMultiModelOutputs))
         self.summarize = use_lm(self.lm)(dspy.Predict(SummarizeDifferences))
         self.extract = use_lm(self.lm)(dspy.Predict(ExtractRequirementsFromPrompt))
         self.rephrase = use_lm(self.lm)(dspy.ChainOfThought(RephraseDiffsToRequirements))
@@ -253,7 +253,7 @@ class InferRequirementsFromCompareData(dspy.Module):
         all_differences = []
         ## if examples_b is not provided, compare the examples to themselves
         if examples_b == None:
-            results = batch_inference(self.compare_single, [
+            results = batch_inference(self.compare_mul, [
                 {"task_description": self.task_description, 
                  "model_outputs": example.outputs, } for example in examples_a # [example.output for example in examples_a[i:i+5]]} for i in range(0, len(examples_a), 5)
             ])
