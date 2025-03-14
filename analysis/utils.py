@@ -8,16 +8,30 @@ import numpy as np
 import pandas as pd
 import tqdm
 import copy
+import time
 
 def use_lm(lm, n=1):
     def decorator(program):
         def wrapper(*args, **kwargs):
-            try:
-                with dspy.context(lm=lm):
-                    return program(*args, **kwargs)
-            except Exception as e:
-                print(f"Error: {e}")
-                return dspy.Example(output="")
+            max_retries = 3
+            initial_delay = 1
+            delay = initial_delay
+            
+            for attempt in range(max_retries):
+                try:
+                    with dspy.context(lm=lm):
+                        return program(*args, **kwargs)
+                except litellm.APIError as e:
+                    if "502 Bad Gateway" in str(e) and attempt < max_retries - 1:
+                        print(f"API Error (attempt {attempt + 1}/{max_retries}): {str(e)}")
+                        print(f"Retrying in {delay} seconds...")
+                        time.sleep(delay)
+                        delay *= 2  # Exponential backoff
+                    else:
+                        raise
+                except Exception as e:
+                    print(f"Error: {e}")
+                    return dspy.Example(output="")
         return wrapper
     return decorator
 
