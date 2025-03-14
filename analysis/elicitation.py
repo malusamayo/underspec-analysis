@@ -7,7 +7,7 @@ from typing import List, Dict, Any
 from pydantic import BaseModel
 from .textgrad_optimizer import TextGradOptimizer
 from .utils import use_lm, batch_inference
-from .judge import IdentifyMistakes
+from .judge import IdentifyMistakes, LLMJudge
 
 class JustifyResponseAndExtractRequirements(dspy.Signature):
     """You are an LLM working on a user-given task. First, provide justification for the model output you produce. The justification should explain why the model output is appropriate for the given task. 
@@ -324,4 +324,91 @@ class InferRequirements(dspy.Module):
         requirements_unsat_result = {k: v for k, v in sorted(requirements_unsat_result.items(), key=lambda item: len(item[1]), reverse=True)}
         filtered_requirements = [k for k, v in requirements_unsat_result.items() if len(v) >= MIN_UNSAT_CUTOFF]
         return filtered_requirements
-    
+
+class IterativeRequirementsSearch(dspy.Module):
+    """Iteratively search for requirements by comparing model outputs and identifying requirements 
+    where there are significant differences in pass rates between models."""
+
+    def __init__(self, task_description, lm, judge_lm):
+        self.lm = lm
+        self.judge_lm = judge_lm
+        self.task_description = task_description
+        
+        self.extract = use_lm(self.lm)(dspy.Predict(ExtractRequirementsFromPrompt))
+        self.compare_module = InferRequirementsFromCompareData(task_description, lm, judge_lm)
+        self.judge = LLMJudge(task_description, judge_lm)
+
+    def evaluate_requirements(self, examples_a, examples_b, requirements):
+        """Evaluate pass rates for requirements on both sets of examples."""
+        results_a = self.judge.evaluate(examples_a, requirements)
+        results_b = self.judge.evaluate(examples_b, requirements)
+        
+        pass_rates = {}
+        for requirement in requirements:
+            pass_rate_a = sum([example.requirements[requirement]['meets_requirement'] for example in results_a]) / len(results_a)
+            pass_rate_b = sum([example.requirements[requirement]['meets_requirement'] for example in results_b]) / len(results_b)
+            pass_rates[requirement] = {
+                'pass_rate_a': pass_rate_a,
+                'pass_rate_b': pass_rate_b,
+            }
+        return pass_rates
+
+    def filter_requirements(self, pass_rates, alpha=0.9, beta=0.75):
+        """Filter requirements based on pass rate gap."""
+        return [
+            req for req, rates in pass_rates.items() 
+            if (rates['pass_rate_a'] >= alpha and rates['pass_rate_b'] <= beta) or
+                (rates['pass_rate_b'] >= alpha and rates['pass_rate_a'] <= beta)
+        ]
+
+    def forward(self, examples_a, examples_b, prompt="", budget=10, batch_size=10):
+        """
+        Iteratively search for requirements with significant pass rate differences.
+        
+        Args:
+            examples_a: First set of examples
+            examples_b: Second set of examples
+            prompt: Initial prompt to extract base requirements
+            budget: Maximum number of requirements to generate
+            batch_size: Number of examples to analyze in each iteration
+            
+        Returns:
+            List of requirements with significant pass rate differences
+        """
+        discovered_requirements = self.extract(prompt=prompt).requirements
+        final_requirements = []
+        
+        # Split examples into batches for iterative analysis
+        num_examples = len(examples_a)
+        for start_idx in range(0, num_examples, batch_size):
+            if len(final_requirements) >= budget:
+                break
+                
+            end_idx = min(start_idx + batch_size, num_examples)
+            batch_a = examples_a[start_idx:end_idx]
+            batch_b = examples_b[start_idx:end_idx]
+            
+            # Generate new requirements through comparative analysis
+            new_requirements = self.compare_module(
+                examples_a=batch_a,
+                examples_b=batch_b,
+                existing_requirements=discovered_requirements,
+                n=10
+            )
+
+            dspy.inspect_history(n=2)
+            
+            # Add new requirements to discovered list
+            discovered_requirements += [req for req in new_requirements if req not in discovered_requirements]
+            
+            # Evaluate new requirements    
+            pass_rates = self.evaluate_requirements(examples_a, examples_b, new_requirements)
+
+            print(pass_rates)
+            
+            # Filter requirements with significant gaps
+            significant_reqs = self.filter_requirements(pass_rates)
+            final_requirements.extend(significant_reqs)
+            print(final_requirements)
+            
+        return final_requirements[:budget]
