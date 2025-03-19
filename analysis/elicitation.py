@@ -188,9 +188,15 @@ class InferRequirementsFromTask(dspy.Module):
         self.lm = lm
         self.task_description = task_description
         self.suggest = use_lm(self.lm)(dspy.Predict(BrainstormRequirements))
+        self.suggest_with_prompt = use_lm(self.lm)(dspy.Predict(BrainstormAdditionalRequirements))
     
-    def forward(self, n=10):
-        return self.suggest(task_description=self.task_description, n=n).requirements
+    def forward(self, existing_requirements=[], n=20):
+        if existing_requirements == []:
+            return self.suggest(task_description=self.task_description, n=n).requirements
+        else:
+            return self.suggest_with_prompt(
+                task_description=self.task_description, 
+                existing_requirements=existing_requirements, n=n).requirements
     
 
 class InferRequirementsFromData(dspy.Module):
