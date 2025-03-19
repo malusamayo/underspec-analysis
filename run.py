@@ -3,12 +3,13 @@ import numpy as np
 import json
 import argparse
 import os
+import copy
 from dotenv import load_dotenv
 import dspy
 import litellm
 import mlflow
 from analysis.load_data import prepare_data
-from analysis.utils import run_model, requirements_to_str
+from analysis.utils import use_lm, run_model, requirements_to_str
 
 load_dotenv()
 
@@ -24,6 +25,52 @@ lm_dict = {
     "ministral-8b": dspy.LM('hosted_vllm/mistralai/Ministral-8B-Instruct-2410', temperature=0, api_base=os.environ.get("BABEL_API_BASE")),
     "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
 }
+
+def run_evaluation(task, model_name, task_program, trainset, valset, n_samples=5):
+    if not os.path.exists(f"data/results/{task}"):
+        os.makedirs(f"data/results/{task}")
+
+    if not os.path.exists(f"data/results/{task}/{model_name}_valset.json"):
+        print("Running model...")
+        trainset_2 = run_model(task_program, trainset, max_workers=32)
+        valset_2 = run_model(task_program, valset, max_workers=32)
+        with open(f"data/results/{task}/{model_name}_trainset.json", "w") as f:
+            json.dump([example.toDict() for example in trainset_2], f)
+        with open(f"data/results/{task}/{model_name}_valset.json", "w") as f:
+            json.dump([example.toDict() for example in valset_2], f)
+    else:
+        print("Loading data from cache...")
+        with open(f"data/results/{task}/{model_name}_trainset.json", "r") as f:
+            trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+        with open(f"data/results/{task}/{model_name}_valset.json", "r") as f:
+            valset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+
+    score_matrix = {requirement: [[] for _ in range(5)] for requirement in requirements} # requirement -> score for each output
+    for i in range(n_samples):
+        for example in valset_2:
+            example.output = example.outputs[i]
+        valset_2 = judge.evaluate(valset_2, requirements=requirements)
+        for example in valset_2:
+            for requirement in requirements:
+                score_matrix[requirement][i].append(example.requirements[requirement]["meets_requirement"])
+            if not hasattr(example, "requirements_dict"):
+                example.requirements_dict = {}
+            example.requirements_dict[i] = copy.deepcopy(example.requirements)
+            example.requirements = {}
+
+    with open(f"data/results/{task}/{model_name}_valset_evaluated.json", "w") as f:
+        json.dump([example.toDict() for example in valset_2], f)
+
+    with open(f"data/results/{task}/{model_name}_scores.json", "w") as f:
+        json.dump(score_matrix, f)
+    
+    print(selected_index)
+    for i in range(n_samples):
+        pass_rates = {}
+        for requirement in requirements:
+            pass_rates[requirement] = str(sum(score_matrix[requirement][i]) / len(valset_2))
+        print(i)
+        print(','.join(list(pass_rates.values())))
 
 if __name__ == "__main__":
 

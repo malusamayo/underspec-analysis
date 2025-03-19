@@ -106,6 +106,8 @@ def cluster_requirements(requirements, num_clusters=40):
         print()
 
 def requirements_to_str(requirements):
-    if len(requirements) == 1:
-        return f" {requirements[0]}"
+    if len(requirements) == 0:
+        return ""
+    # if len(requirements) == 1:
+    #     return f" {requirements[0]}"
     return "\n\nFollow the following requirements:\n" + "\n".join([f"- {req}" for req in requirements])
