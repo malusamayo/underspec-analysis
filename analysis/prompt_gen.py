@@ -3,7 +3,7 @@ from typing import List, Dict, Any
 import difflib
 import json
 from .utils import use_lm
-
+from .load_data import prepare_data
 
 class ParaphrasePrompt(dspy.Signature):
     """Generate a paraphrase of a given prompt. Make sure no existing requirements are removed and no new requirements are added."""
@@ -22,7 +22,7 @@ class CheckEquivalence(dspy.Signature):
 
 def generate_paraphrase(lm, prompt, requirements, n=10):
     paraphrase = use_lm(lm)(dspy.Predict(ParaphrasePrompt, n=n))
-    check_equivalence = use_lm(lm)(dspy.Predict(CheckEquivalence))
+    check_equivalence = use_lm(lm)(dspy.ChainOfThought(CheckEquivalence))
     paraphrased_prompts = []
     while len(paraphrased_prompts) < n:
         new_paraphrases = paraphrase(prompt=prompt, requirements=requirements).completions.paraphrased_prompt
@@ -30,6 +30,8 @@ def generate_paraphrase(lm, prompt, requirements, n=10):
         paraphrased_prompts.extend(new_paraphrases)
         # Remove duplicates while preserving order
         paraphrased_prompts = list(dict.fromkeys(paraphrased_prompts))
+        print(paraphrased_prompts)
+        print(len(paraphrased_prompts))
     return paraphrased_prompts[:n]
 
 class EditPrompt(dspy.Signature):
@@ -60,22 +62,16 @@ def generate_edits(lm, prompt, requirements, n=10):
 if __name__ == "__main__":
     lm = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, cache=False)
 
-    prompt = (
-        "Your task is to take the code snippet provided and explain it in simple, easy-to-understand language. " 
-        "Break down the code's functionality, purpose, and key components. Use analogies, examples, and plain terms to make the explanation accessible to someone with minimal coding knowledge. "
-        "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
+    task = "arxiv"
+    task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
+        task_name=task,
     )
-    requirements_base = [
-        "The output should use simple, easy-to-understand language.",
-        "The output should break down the code's functionality, purpose, and key components.",
-        "The output should use analogies, examples, and plain terms.",
-        "The output should be accessible to someone with minimal coding knowledge.",
-        "The output should avoid using technical jargon unless absolutely necessary.",
-        "The output should provide clear explanations for any jargon used.",
-    ]
-    example_edits = generate_edits(lm, prompt, requirements_base)
-    d = ({"edited_" + str(idx): prompt for idx, prompt in enumerate(example_edits)})
-    print(json.dumps(d, indent=4))
+    prompt = prompts["original"]
+    requirements_base = requirements["known"]
+
+    # example_edits = generate_edits(lm, prompt, requirements_base)
+    # d = ({"edited_" + str(idx): prompt for idx, prompt in enumerate(example_edits)})
+    # print(json.dumps(d, indent=4))
     
     paraphrases = generate_paraphrase(lm, prompt, requirements_base)
     d = ({"paraphrased_" + str(idx): prompt for idx, prompt in enumerate(paraphrases)})
