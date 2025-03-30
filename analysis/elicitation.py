@@ -159,6 +159,7 @@ Guidelines:
 - Requirements should be generally applicable for responses to that task, not referring to any specific response
 - Focus only on objective, measurable requirements
 - Use concise and unambiguous language
+- Never generate similar requirements to the existing requirements
 
 Here are some bad requirements:
 - The output should be interesting. - This is subjective
@@ -188,7 +189,7 @@ class InferRequirementsFromTask(dspy.Module):
         self.lm = lm
         self.task_description = task_description
         self.suggest = use_lm(self.lm)(dspy.Predict(BrainstormRequirements))
-        self.suggest_with_prompt = use_lm(self.lm)(dspy.Predict(BrainstormAdditionalRequirements))
+        self.suggest_with_prompt = use_lm(self.lm)(dspy.ChainOfThought(BrainstormAdditionalRequirements))
     
     def forward(self, existing_requirements=[], n=20):
         if existing_requirements == []:
@@ -359,15 +360,14 @@ class IterativeRequirementsSearch(dspy.Module):
             }
         return pass_rates
 
-    def filter_requirements(self, pass_rates, alpha=0.9, beta=0.75):
+    def filter_requirements(self, pass_rates, delta=0.1):
         """Filter requirements based on pass rate gap."""
         return [
             req for req, rates in pass_rates.items() 
-            if (rates['pass_rate_a'] >= alpha and rates['pass_rate_b'] <= beta) or
-                (rates['pass_rate_b'] >= alpha and rates['pass_rate_a'] <= beta)
+            if abs(rates['pass_rate_a'] - rates['pass_rate_b']) >= delta
         ]
 
-    def forward(self, examples_a, examples_b, prompt="", budget=10, batch_size=10):
+    def forward(self, examples_a, examples_b, prompt="", budget=15, batch_size=5):
         """
         Iteratively search for requirements with significant pass rate differences.
         
