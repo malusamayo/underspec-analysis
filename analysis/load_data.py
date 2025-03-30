@@ -119,7 +119,7 @@ def prepare_data_story():
     return task_description, TaskProgram, trainset, valset, requirement_path
 
 
-def prepare_data_arxiv_summarization(configs):
+def prepare_data_arxiv_summarization_v0(configs):
     data_path = "data/arxiv.csv"
     input_key = "article"
     requirement_path = "data/requirements/requirements_arxiv_v0.json"
@@ -196,7 +196,7 @@ def prepare_data_explain_code_v1():
 def prepare_data_explain_code():
     data_path = "data/commitpack.csv"
     input_key = "code"
-    requirement_path = "data/requirements/requirements_commitpack.json"
+    requirement_path = "data/requirements/commitpack.json"
     prompt_path = "data/prompts/commitpack.json"
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
@@ -211,6 +211,76 @@ def prepare_data_explain_code():
 
     return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
 
+def prepare_data_arxiv_summarization():
+    data_path = "data/ai_arxiv.csv"
+    input_key = "content"
+    requirement_path = "data/requirements/arxiv.json"
+    prompt_path = "data/prompts/arxiv.json"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+
+    task_description = "Summarize the arXiv paper."
+
+    prompt = """You will be given the content of a newly published arXiv paper and asked to write a summary of it.
+
+Here are some things to keep in mind:
+- Summarize the paper in a way that is understandable to the general public
+- Use a professional tone
+- Don't use the word "quest" or similar flowery language
+- Don't say this is a recent paper, since this summary may be referenced in the future
+- Limit your summary to about 4 paragraphs
+- Do not prefix the article with a title
+- Do not mention the author's names
+- You can use the following markdown tags in your summary: ordered list, unordered list, and h3 headings
+- Divide the summary into sections using markdown h3 headings
+- Do not include a title for the summary; only include headings to divide the summary into sections
+- The first line should be an h3 heading as well.
+- Assume readers know what common AI acronyms stand for like LLM and AI
+- Don't mention any part of this prompt"""
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+
+def prepare_data_product_descrp_gen():
+    data_path = "data/esci.csv"
+    input_key = "product_text"
+    requirement_path = "data/requirements/product.json"
+    prompt_path = "data/prompts/product.json"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+
+    task_description = "Generate engaging product description from the bullet points."
+
+    prompt = """You are a leading digital marketer working for a top retail organization. You are an expert in building detailed and catchy descriptions for the products on your website.
+
+Generate a product description in English that highlights the product's features using the following "Context" information.
+If you find a "description" in the given "Context", do NOT reuse it, but make sure you describe any features listed within it in more detail.
+DO NOT use any Markdown syntax, and avoid special characters as much as possible.
+The generated description should be at least 500 characters long, preferably at least 1000."""
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+
+
+def prepare_data_plan_lesson():
+    data_path = "data/lesson_plan.csv"
+    input_key = "input"
+    requirement_path = ""
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
+
+    task_description = "Generate a lesson plan for the given user query."
+
+    prompt = (
+        "Your task is to create a comprehensive, engaging, and well-structured lesson plan on the given subject. "
+        "The lesson plan should be designed for a 60-minute class session and should cater to a specific grade level or age group. "
+        "Begin by stating the lesson objectives, which should be clear, measurable, and aligned with relevant educational standards. "
+        "Next, provide a detailed outline of the lesson, breaking it down into an introduction, main activities, and a conclusion. "
+        "For each section, describe the teaching methods, learning activities, and resources you will use to effectively convey the content and engage the students. "
+        "Finally, describe the assessment methods you will employ to evaluate students' understanding and mastery of the lesson objectives. "
+        "The lesson plan should be well-organized, easy to follow, and promote active learning and critical thinking."
+    )
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
+
 def prepare_data(
     task_name,
     configs=None,
@@ -219,20 +289,20 @@ def prepare_data(
     match task_name:
         case "quiz_making":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_quiz_making()
-        case "product_descrp_gen":
-            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_product_descrp_gen()
         case "recipe":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_recipe_gen()
         case "story":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_story()
-        case "arxiv":
-            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_arxiv_summarization(configs)
         case "code":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_v0()
         case "lc":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_v1()
         case "commitpack":
             task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_explain_code()
+        case "arxiv":
+            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_arxiv_summarization()
+        case "product":
+            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_product_descrp_gen()
         case _:
             task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = "", None, [], [], "", ""
     
