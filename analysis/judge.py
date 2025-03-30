@@ -57,17 +57,18 @@ Then, compare the two model outputs based on how many requirements each output s
 
 
 class LLMJudge(dspy.Module):
-    def __init__(self, task_description, lm, max_workers=32):
+    def __init__(self, task_description, lm, max_workers=32, omit_input=False):
         self.lm = lm
         self.task_description = task_description
         self.max_workers = max_workers
+        self.omit_input = omit_input
         self.evaluator = use_lm(self.lm)(dspy.Predict(EvaluateRequirement))
         self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(IdentifyMistakes))
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
 
-    def evaluate_requirement(self, example, requirement, omit_input=False):
+    def evaluate_requirement(self, example, requirement):
         return self.evaluator(task_description=self.task_description, 
-                            model_input="" if omit_input else example.inputs().toDict(), 
+                            model_input="" if self.omit_input else example.inputs().toDict(), 
                             model_output=example.output, 
                             requirement=requirement)
     
