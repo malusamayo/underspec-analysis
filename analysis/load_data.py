@@ -159,7 +159,7 @@ Here are some things to keep in mind:
 
     return task_description, final_task_program, trainset, valset, requirement_path
 
-def prepare_data_explain_code_dep():
+def prepare_data_explain_code_v0():
     data_path = "data/humaneval.csv"
     input_key = "code"
     requirement_path = "data/requirements/requirements_code_v0.json"
@@ -176,7 +176,7 @@ def prepare_data_explain_code_dep():
 
     return task_description, TaskProgram, trainset, valset, requirement_path
 
-def prepare_data_explain_code():
+def prepare_data_explain_code_v1():
     data_path = "data/leetcode-py-all.csv"
     input_key = "python_solution"
     requirement_path = ""
@@ -192,6 +192,24 @@ def prepare_data_explain_code():
     )
 
     return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
+
+def prepare_data_explain_code():
+    data_path = "data/commitpack.csv"
+    input_key = "code"
+    requirement_path = "data/requirements/requirements_commitpack.json"
+    prompt_path = "data/prompts/commitpack.json"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+
+    task_description = "Explain the code snippet."
+
+    prompt = (
+        "Your task is to take the code snippet provided and explain it in simple, easy-to-understand language. " 
+        "Break down the code's functionality, purpose, and key components. Use analogies, examples, and plain terms to make the explanation accessible to someone with minimal coding knowledge. "
+        "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
+    )
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
 
 def prepare_data(
     task_name,
@@ -210,11 +228,13 @@ def prepare_data(
         case "arxiv":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_arxiv_summarization(configs)
         case "code":
-            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_dep()
+            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_v0()
         case "lc":
-            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code()
+            task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_v1()
+        case "commitpack":
+            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_explain_code()
         case _:
-            task_description, TaskProgram, trainset, valset, requirement_path = "", None, [], [], ""
+            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = "", None, [], [], "", ""
     
     if configs and configs.get("requirement"):
         requirement_path = configs.get("requirement")
@@ -225,4 +245,10 @@ def prepare_data(
     else:
         requirements = {}
 
-    return task_description, TaskProgram, trainset, valset, requirements
+    if prompt_path:
+        with open(prompt_path, "r") as f:
+            prompts = json.load(f)
+    else:
+        prompts = {}
+
+    return task_description, TaskProgram, trainset, valset, requirements, prompts
