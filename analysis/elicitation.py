@@ -3,11 +3,16 @@ import os
 import copy
 import dspy.predict
 import litellm
+import json
+import argparse
+import mlflow
+import numpy as np
 from typing import List, Dict, Any
 from pydantic import BaseModel
 from .textgrad_optimizer import TextGradOptimizer
-from .utils import use_lm, batch_inference
+from .utils import use_lm, batch_inference, run_model, LM_DICT
 from .judge import IdentifyMistakes, LLMJudge
+from .load_data import prepare_data
 
 class JustifyResponseAndExtractRequirements(dspy.Signature):
     """You are an LLM working on a user-given task. First, provide justification for the model output you produce. The justification should explain why the model output is appropriate for the given task. 
@@ -367,7 +372,7 @@ class IterativeRequirementsSearch(dspy.Module):
             if abs(rates['pass_rate_a'] - rates['pass_rate_b']) >= delta
         ]
 
-    def forward(self, examples_a, examples_b, prompt="", budget=15, batch_size=5):
+    def forward(self, examples_a, examples_b, prompt="", requirements=[], budget=15, batch_size=5):
         """
         Iteratively search for requirements with significant pass rate differences.
         
@@ -381,7 +386,7 @@ class IterativeRequirementsSearch(dspy.Module):
         Returns:
             List of requirements with significant pass rate differences
         """
-        discovered_requirements = self.extract(prompt=prompt).requirements
+        discovered_requirements = self.extract(prompt=prompt).requirements if requirements == [] else requirements
         final_requirements = []
         
         # Split examples into batches for iterative analysis
@@ -402,7 +407,7 @@ class IterativeRequirementsSearch(dspy.Module):
                 n=10
             )
 
-            dspy.inspect_history(n=2)
+            dspy.inspect_history(n=1)
             
             # Add new requirements to discovered list
             discovered_requirements += [req for req in new_requirements if req not in discovered_requirements]
@@ -418,3 +423,78 @@ class IterativeRequirementsSearch(dspy.Module):
             print(final_requirements)
             
         return final_requirements[:budget]
+
+if __name__ == "__main__":
+
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--experiment", type=str, help="The name of the experiment to log to.")
+    args = parser.parse_args()
+
+    if args.experiment:
+        mlflow.litellm.autolog()
+        # mlflow.dspy.autolog()
+        experiment = mlflow.set_experiment(args.experiment)
+        print(experiment.experiment_id)
+
+    task = "commitpack"
+    # task = "arxiv"
+    # task = "product"
+    task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
+        task_name=task,
+    )
+
+    prompt_model = LM_DICT["gpt-4o"]
+
+    model_names = ["gpt-4o-mini", "gemini-1.5-flash"]
+    prompt_name = "original"
+    trainsets = []
+    for model_name in model_names:
+        task_model = LM_DICT[model_name]
+        task_program = TaskProgram(lm=task_model, n=1)
+        if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json"):
+            print("Running model...")
+            trainset_2 = run_model(task_program, trainset, max_workers=32)
+        else:
+            print("Loading data from cache...")
+            with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "r") as f:
+                trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+        trainsets.append(trainset_2)
+    
+    # merge trainsets output into outputs
+    trainset = [
+        dspy.Example(**{task_program.input_key: examples[0][task_program.input_key]}, outputs=[row["output"] for row in examples]).with_inputs(task_program.input_key)
+        for examples in zip(*trainsets)
+    ]
+
+    from analysis.elicitation import (
+        ExtractRequirementsFromPrompt,
+        InferRequirementsFromCompareData,
+        InferRequirementsFromTask,
+        IterativeRequirementsSearch,
+    )
+
+    infer = IterativeRequirementsSearch(task_description=task_description, lm=prompt_model, judge_lm=LM_DICT["gpt-4o-mini"])
+    requirements = infer(examples_a=trainsets[0], examples_b=trainsets[1], prompt=task_program.prompt)
+                        #  requirements = requirements["known"] + requirements["unseen"])
+    print(json.dumps({"unseen": requirements}, indent=4))
+
+
+    exit(0)
+    
+    extract = use_lm(prompt_model)(dspy.Predict(ExtractRequirementsFromPrompt))
+    existing_requirements = extract(prompt=task_program.prompt).requirements
+    # infer = InferRequirementsFromCompareData(task_description=task_description, lm=prompt_model, judge_lm=prompt_model)
+    # summary = infer(trainset[:20], existing_requirements=existing_requirements)
+    # dspy.inspect_history(n=1)
+
+    existing_requirements += [
+        "The output should use structured sections with headings to organize the explanation.",
+        "The output should not explain import statements.",
+        "The output should include a walkthrough example.",
+        "The output should interleave explanations with code snippets.",
+        "The output should avoid line-by-line explanations of code.",
+    ]
+
+    infer = InferRequirementsFromTask(task_description=task_description, lm=prompt_model)
+    requirements = infer(existing_requirements=existing_requirements, n=20)
+    dspy.inspect_history(n=1)
