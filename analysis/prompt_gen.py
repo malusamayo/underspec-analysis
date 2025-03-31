@@ -4,6 +4,7 @@ import difflib
 import json
 from .utils import use_lm
 from .load_data import prepare_data
+from .utils import requirements_to_str
 
 class ParaphrasePrompt(dspy.Signature):
     """Generate a paraphrase of a given prompt. Make sure no existing requirements are removed and no new requirements are added."""
@@ -59,20 +60,55 @@ def generate_edits(lm, prompt, requirements, n=10):
         print(len(example_edits))
     return example_edits[:n]
 
+class RemoveRequirementFromPrompt(dspy.Signature):
+    """Make minimal edits to the given prompt to remove the given requirement."""
+
+    prompt: str = dspy.InputField(desc="The prompt to edit.")
+    requirement: str = dspy.InputField(desc="The requirement to remove.")
+    edited_prompt: str = dspy.OutputField(desc="The edited prompt.")
+
+def remove_requirements(lm, prompt, requirements):
+    remove = use_lm(lm)(dspy.Predict(RemoveRequirementFromPrompt))
+    prompts = {}
+    for idx, requirement in enumerate(requirements):
+        prompts["removed_" + str(idx)] = remove(prompt=prompt, requirement=requirement).edited_prompt
+    return prompts
+
+
+def generate_fixes(prompt, requirements):
+    prompts = {}
+    select_indices = [
+        [i] for i, r in enumerate(requirements)
+    ] + [
+        [i for i, _ in enumerate(requirements)]
+    ]
+    for selected_index in select_indices:
+        requirements_selected = [requirements[i] for i in selected_index]
+        prompts["fixed_" + "+".join([str(i) for i in selected_index])] = prompt + requirements_to_str(requirements_selected)
+    return prompts
+
+
 if __name__ == "__main__":
     lm = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, cache=False)
 
-    task = "arxiv"
+    task = "commitpack"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
     prompt = prompts["original"]
     requirements_base = requirements["known"]
+    requirements_unseen = requirements["unseen"]
+
+    d = generate_fixes(prompt, requirements_unseen)
+    print(json.dumps(d, indent=4))
+
+    # d = remove_requirements(lm, prompt, requirements_base)
+    # print(json.dumps(d, indent=4))
 
     # example_edits = generate_edits(lm, prompt, requirements_base)
     # d = ({"edited_" + str(idx): prompt for idx, prompt in enumerate(example_edits)})
     # print(json.dumps(d, indent=4))
     
-    paraphrases = generate_paraphrase(lm, prompt, requirements_base)
-    d = ({"paraphrased_" + str(idx): prompt for idx, prompt in enumerate(paraphrases)})
-    print(json.dumps(d, indent=4))
+    # paraphrases = generate_paraphrase(lm, prompt, requirements_base)
+    # d = ({"paraphrased_" + str(idx): prompt for idx, prompt in enumerate(paraphrases)})
+    # print(json.dumps(d, indent=4))
