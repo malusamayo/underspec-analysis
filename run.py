@@ -9,23 +9,9 @@ import dspy
 import litellm
 import mlflow
 from analysis.load_data import prepare_data
-from analysis.utils import use_lm, run_model, requirements_to_str
+from analysis.utils import run_model, LM_DICT
 
 load_dotenv()
-
-lm_dict = {
-    "gpt-4o": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0),
-    "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0),
-    "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=10000),
-    "gemini-1.5-pro": dspy.LM('openai/gemini-1.5-pro-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "gemini-1.5-flash": dspy.LM('openai/gemini-1.5-flash-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "claude-3.5-sonnet": dspy.LM('openai/claude-3-5-sonnet-20241022', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "llama3-2-11b-instruct": dspy.LM('openai/llama3-2-11b-instruct', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "mixtral-8x7b": dspy.LM('bedrock/mistral.mixtral-8x7b-instruct-v0:1', temperature=1.0),
-    "qwen2.5-7b": dspy.LM('hosted_vllm/Qwen/Qwen2.5-7B-Instruct', temperature=0.7, api_base=os.environ.get("BABEL_API_BASE")),
-    "ministral-8b": dspy.LM('hosted_vllm/mistralai/Ministral-8B-Instruct-2410', temperature=0, api_base=os.environ.get("BABEL_API_BASE")),
-    "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
-}
 
 def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset, n_samples=5, requirements=None, judge=None):
     if not os.path.exists(f"data/results/{task}"):
@@ -49,33 +35,41 @@ def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset
     if requirements is None:
         return
     
-    if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json"):
-        print("Evaluating model...")
-
-        score_matrix = {requirement: [[] for _ in range(5)] for requirement in requirements} # requirement -> score for each output
-        for i in range(n_samples):
-            for example in valset_2:
-                example.output = example.outputs[i]
-            valset_2 = judge.evaluate(valset_2, requirements=requirements)
-            for example in valset_2:
-                for requirement in requirements:
-                    score_matrix[requirement][i].append(example.requirements[requirement]["meets_requirement"])
-                if not hasattr(example, "requirements_dict"):
-                    example.requirements_dict = {}
-                example.requirements_dict[i] = copy.deepcopy(example.requirements)
-                example.requirements = {}
-
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json", "w") as f:
-            json.dump([example.toDict() for example in valset_2], f)
-
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_scores.json", "w") as f:
-            json.dump(score_matrix, f)
-    else:
+    if os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json"):
         print("Loading evaluation data from cache...")
         with open(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json", "r") as f:
             valset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+        for example in valset_2:
+            example.requirements = example.requirements_dict["0"]
+        
         with open(f"data/results/{task}/{model_name}_{prompt_name}_scores.json", "r") as f:
             score_matrix = json.load(f)
+        score_matrix |= {requirement: [[] for _ in range(n_samples)] for requirement in requirements if requirement not in score_matrix}
+    else:
+        score_matrix = {requirement: [[] for _ in range(n_samples)] for requirement in requirements}
+
+    # identify requirement not evaluated yet
+    requirements_not_evaluated = [requirement for requirement in requirements if requirement not in score_matrix or len(score_matrix[requirement][0]) < len(valset_2)]
+    
+    if len(requirements_not_evaluated) > 0:
+        for i in range(n_samples):
+            print("Evaluating model on sample", i)
+            for example in valset_2:
+                example.output = example.outputs[i]
+            valset_2 = judge.evaluate(valset_2, requirements=requirements_not_evaluated)
+            for example in valset_2:
+                for requirement in requirements_not_evaluated:
+                    score_matrix[requirement][i].append(example.requirements[requirement]["meets_requirement"])
+                if not hasattr(example, "requirements_dict"):
+                    example.requirements_dict = {}
+                example.requirements_dict[str(i)] = copy.deepcopy(example.requirements)
+                example.requirements = {}
+
+            with open(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json", "w") as f:
+                json.dump([example.toDict() for example in valset_2], f)
+
+            with open(f"data/results/{task}/{model_name}_{prompt_name}_scores.json", "w") as f:
+                json.dump(score_matrix, f)
     
     for i in range(n_samples):
         pass_rates = {}
