@@ -248,7 +248,7 @@ def prepare_data_product_descrp_gen():
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
 
-    task_description = "Generate engaging product description from the bullet points."
+    task_description = "Write engaging product description from the context."
 
     prompt = """You are a leading digital marketer working for a top retail organization. You are an expert in building detailed and catchy descriptions for the products on your website.
 
