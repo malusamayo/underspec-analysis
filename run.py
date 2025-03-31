@@ -83,19 +83,71 @@ if __name__ == "__main__":
 
     parser = argparse.ArgumentParser()
     parser.add_argument("--experiment", type=str, help="The name of the experiment to log to.")
-    parser.add_argument("--elicitation_mode", action='store_true', help="Whether to run in elicitation mode.")
     args = parser.parse_args()
 
     if args.experiment:
         mlflow.litellm.autolog()
-        mlflow.dspy.autolog()
+        # mlflow.dspy.autolog()
         experiment = mlflow.set_experiment(args.experiment)
         print(experiment.experiment_id)
 
-    task_description, TaskProgram, trainset, valset, requirements = prepare_data(
-        'lc',
+    task = "commitpack"
+    # task = "arxiv"
+    # task = "product"
+    task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
+        task_name=task,
     )
 
-    task_model = lm_dict["llama3-2-11b-instruct"]
-    task_program = use_lm(lm=task_model)(TaskProgram)
-    results = run_model(task_program, trainset[:2])
+    prompt_model = LM_DICT["gpt-4o"]
+    judge_model = LM_DICT["gpt-4o"]
+
+    from analysis.judge import LLMJudge
+    judge = LLMJudge(task_description=task_description, lm=judge_model, max_workers=64, omit_input=False)
+
+    requirements = requirements["unseen"] + requirements["known"]
+    model_names = [
+        "gpt-4o",
+        "gpt-4o-2024-05-13",
+        "gpt-4o-2024-11-20",
+        "llama3.1-8b",
+        "qwen2.5-7b",
+        "ministral-8b",
+    ]
+    prompt_subsets = [
+        "original",
+        "edited",
+        "paraphrased",
+        "fixed",
+        "task_only",
+        "removed",
+        "optimized"
+    ]
+
+    key_in_subset = lambda key: any([key.startswith(subset) for subset in prompt_subsets])
+
+    prompts = {
+        k: v for k, v in prompts.items() if key_in_subset(k)
+    }
+    
+    n_samples = 1
+    # n_samples = 10
+
+    all_pass_rates = {}
+    for model_name in model_names:
+        task_model = LM_DICT[model_name]
+        task_program = TaskProgram(lm=task_model, n=n_samples)
+        for prompt_name, prompt in prompts.items():
+            task_program.prompt = prompt
+            if n_samples > 1:
+                prompt_name += f"_samples_{n_samples}"
+            print("Running evaluation for", model_name, prompt_name)
+            pass_rates = run_evaluation(
+                task, 
+                model_name, prompt_name, task_program, 
+                trainset, valset, 
+                n_samples=n_samples, 
+                requirements=requirements, 
+                judge=judge,
+            )
+            all_pass_rates[(model_name, prompt_name)] = pass_rates
+    print(all_pass_rates)
