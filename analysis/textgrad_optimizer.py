@@ -7,7 +7,9 @@ import random
 from pydantic import BaseModel
 from concurrent.futures import ThreadPoolExecutor
 from typing import Callable, List, Tuple, Optional, Any
-
+import json
+from .load_data import prepare_data
+from .judge import LLMJudge
 
 class EvalResult(BaseModel):
     """Stores evaluation results for a single example when using a particular prompt."""
@@ -99,13 +101,13 @@ class TextGradOptimizer(Teleprompter):
         self.comparator = dspy.Predict(PromptComparator)
         self.feedback_instruction = dspy.Predict(PromptFeedbackBasedInstruction)
 
-    def process_example(self, model: dspy.Module, example, return_outputs=False):
+    def process_example(self, model, example, return_outputs=False):
         model = deepcopy(model)
 
         try:
 
             with dspy.context(lm=self.task_model):
-                output = model(example.inputs().toDict())
+                output = model(**example.inputs().toDict()).output
 
             # Evaluate
             feedback, score = self.metric(example, output)
@@ -192,7 +194,7 @@ class TextGradOptimizer(Teleprompter):
 
         return avg_score, pos_inputs, neg_inputs
 
-    def compile(self, model: dspy.Module, trainset: List[dspy.Example]):
+    def compile(self, model, trainset: List[dspy.Example]):
         """
         The main loop:
         1. Evaluate using the current best prompt (one evaluation per iteration)
@@ -208,14 +210,19 @@ class TextGradOptimizer(Teleprompter):
 
         # Initialize best_score according to whether we are maximizing or minimizing
         best_score = float("-inf") if self.optimize_for == "max" else float("inf")
+        current_model.prompt_history = {}
 
         for i in range(self.max_iters):
             print("=" * 20)
             print(f"Iteration {i+1}/{self.max_iters}")
-            print(f"Current Prompt:\n{current_model.model.signature.instructions}")
+            print(f"Current Prompt:\n{current_model.prompt}")
 
             # 1) Evaluate using the current best prompt
             score, pos_inputs, neg_inputs = self._get_pos_neg_results(current_model, trainset)
+            current_model.prompt_history[i] = {
+                "prompt": current_model.prompt,
+                "score": score,
+            }
             print(f"Average Score (current prompt): {score}")
             print(f"Positive examples: {len(pos_inputs)}")
             print(f"Negative examples: {len(neg_inputs)}")
@@ -230,14 +237,14 @@ class TextGradOptimizer(Teleprompter):
 
                 # 2) Generate feedback to improve the prompt
                 feedback = self.comparator(
-                    current_prompt=current_model.model.signature.instructions,
+                    current_prompt=current_model.prompt,
                     pos_input_with_metrics=pos_inputs,
                     neg_input_with_metrics=neg_inputs
                 ).feedback
 
                 # 3) Propose a refined prompt using the feedback
                 new_prompt = self.feedback_instruction(
-                    previous_prompt=current_model.model.signature.instructions,
+                    previous_prompt=current_model.prompt,
                     feedback=feedback
                 ).new_prompt
 
@@ -249,12 +256,42 @@ class TextGradOptimizer(Teleprompter):
             #    The newly accepted prompt will be evaluated at the start of the next iteration.
             if (self.optimize_for == "max" and score > best_score) or (self.optimize_for == "min" and score < best_score):
                 best_score = score
-                current_model.best_model = deepcopy(current_model.model) # Store the best model
+                current_model.best_prompt = deepcopy(current_model.prompt) # Store the best model
             
             # Update the prompt
-            current_model.model.signature = current_model.model.signature.with_instructions(new_prompt) 
+            current_model.prompt = new_prompt 
 
         print(f"\nOptimization complete.")
         print(f"Last Prompt Score = {best_score}")
-        print(f"Final Prompt:\n{current_model.best_model.signature.instructions}")
+        print(f"Final Prompt:\n{current_model.best_prompt}")
         return current_model
+    
+if __name__ == "__main__":
+
+    task = "commitpack"
+    task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
+        task_name=task,
+    )
+
+    judge_model = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0)
+    prompt_model = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0)
+    task_model = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0)
+    judge = LLMJudge(task_description=task_description, lm=judge_model, max_workers=64, omit_input=False)
+
+    task_program = TaskProgram(lm=task_model, n=1)
+    requirements = requirements["known"]
+
+    def metric(example, output):
+        example = deepcopy(example)
+        example.output = output
+        eval_result = judge.evaluate_guideline(example, requirements)
+        return eval_result.evaluation_execution, 1 - len(eval_result.unsatisfied_requirements) / len(requirements)
+
+    optimizer = TextGradOptimizer(metric=metric, max_iters=6, prompt_model=prompt_model, task_model=task_model, lower_bound=0.8)
+    compiled_task_module = optimizer.compile(task_program, trainset)
+    all_prompts = {
+        "optimized_" + str(k-1): v['prompt']
+        for k, v in compiled_task_module.prompt_history.items() if k > 0
+    }
+    print(json.dumps(compiled_task_module.prompt_history))
+    print(json.dumps(all_prompts, indent=4))
