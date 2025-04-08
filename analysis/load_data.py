@@ -29,7 +29,7 @@ class TaskProgram:
 def prepare_dataset(data_path, input_key, data_size=100):
 
     df = pd.read_csv(data_path)[:data_size]
-    df_train = df.sample(frac=0.2, random_state=42)
+    df_train = df.sample(frac=0.5, random_state=42)
     df_val = df.drop(df_train.index)
     trainset = []
     for i, row in df_train.iterrows():
@@ -68,11 +68,11 @@ def prepare_data_quiz_making():
     return task_description, TaskProgram, trainset, valset, requirement_path
 
 def prepare_data_product_descrp_gen():
-    data_path = "data/esci_100.csv"
+    data_path = "data/esci_500.csv"
     input_key = "product_bullet_point"
     requirement_path = "data/requirements/requirements_product_v0.json"
 
-    trainset, valset = prepare_dataset(data_path, input_key)
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
     task_description = "Generate engaging product description from the bullet points."
 
@@ -194,12 +194,12 @@ def prepare_data_explain_code_v1():
     return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
 
 def prepare_data_explain_code():
-    data_path = "data/commitpack.csv"
+    data_path = "data/commitpack_357.csv"
     input_key = "code"
     requirement_path = "data/requirements/commitpack.json"
     prompt_path = "data/prompts/commitpack.json"
 
-    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
     task_description = "Explain the code snippet."
 
@@ -217,7 +217,7 @@ def prepare_data_arxiv_summarization():
     requirement_path = "data/requirements/arxiv.json"
     prompt_path = "data/prompts/arxiv.json"
 
-    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
     task_description = "Summarize the arXiv paper."
 
@@ -246,7 +246,7 @@ def prepare_data_product_descrp_gen():
     requirement_path = "data/requirements/product.json"
     prompt_path = "data/prompts/product.json"
 
-    trainset, valset = prepare_dataset(data_path, input_key, data_size=100)
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
     task_description = "Write engaging product description from the context."
 
