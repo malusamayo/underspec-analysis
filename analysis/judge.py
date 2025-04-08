@@ -3,10 +3,20 @@ import copy
 import dspy
 from .utils import use_lm, batch_inference, run_model, find_nearest_requirement
 from typing import List, Any
+from pydantic import BaseModel
+
+class EvalResult(BaseModel):
+    """Stores evaluation results for a single example when using a particular prompt."""
+    requirement: str
+    evaluation_plan: str
+    plan_execution: str
+    meets_requirement: bool
+
 
 class EvaluateRequirement(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given requirement. 
-    Given a task description, model input, model output, and requirement, first generate a step-by-step evaluation plan for the requirement, then execute the evaluation plan to evaluate if the model output meets the requirement."""
+    Given a task description, model input, model output, and requirement, first generate a step-by-step evaluation plan for the requirement, then execute the evaluation plan to evaluate if the model output meets the requirement.
+    Note that sometimes a requirement may not be directly applicable, the evaluation plan should include a step to check if the requirement is applicable to the task. If the requirement is not applicable, return True for meets_requirement."""
     
     task_description = dspy.InputField(desc="Description of the task")
     model_input = dspy.InputField(desc="The model input")
@@ -14,19 +24,19 @@ class EvaluateRequirement(dspy.Signature):
     requirement = dspy.InputField(desc="The requirement to evaluate")
     evaluation_plan: str = dspy.OutputField(desc="The evaluation plan for the requirement")
     plan_execution: str = dspy.OutputField(desc="The execution of the evaluation plan")
+    is_applicable: bool = dspy.OutputField(desc="Whether the requirement is applicable to the task, True or False")
     meets_requirement: bool = dspy.OutputField(desc="Whether the model output meets the requirement, True or False")
 
 class EvaluateGuideline(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given guideline.
-Given a task description, model input, model output, and guideline, first evaluate the model output using the requirements in the guideline one by one. For each requirement in the guideline, do the evaluation step-by-step. 
-Then, calculate an overall score for how many requirements the model output satisfies."""
+Given a task description, model input, model output, and guideline, evaluate the model output using the requirements in the guideline one by one. 
+For each requirement in the guideline, do the evaluation in two steps: First generate a step-by-step evaluation plan for the requirement, then execute the evaluation plan to evaluate if the model output meets the requirement. Finally, generate a final judgment on whether the model output meets the requirement."""
 
     task_description: str = dspy.InputField(desc="Description of the task")
     model_input: str = dspy.InputField(desc="The model input")
     model_output: str = dspy.InputField(desc="The model output")
     guideline: List[str] = dspy.InputField(desc="The guideline for evaluation")
-    evaluation_execution: str = dspy.OutputField(desc="The execution of the evaluation guideline")
-    score: int = dspy.OutputField(desc="A score indicating how many requirements in the guideline the model output satisfies")
+    results: List[EvalResult] = dspy.OutputField(desc="The evaluation results for each requirement")
 
 class IdentifyMistakes(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given guideline.
@@ -63,7 +73,7 @@ class LLMJudge(dspy.Module):
         self.max_workers = max_workers
         self.omit_input = omit_input
         self.evaluator = use_lm(self.lm)(dspy.Predict(EvaluateRequirement))
-        self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(IdentifyMistakes))
+        self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(EvaluateGuideline))
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
 
     def evaluate_requirement(self, example, requirement):
@@ -131,11 +141,18 @@ class LLMJudge(dspy.Module):
                 max_workers=self.max_workers
             )
             for example, result in zip(examples, results):
-                example.evaluation_result = {
-                    "evaluation_execution": result.evaluation_execution,
-                    "unsatisfied_requirements": result.unsatisfied_requirements,
-                    "score": 1 - len(result.unsatisfied_requirements) / len(requirements)
-                }
+                if not hasattr(example, "requirements"):
+                    example.requirements = {}
+                for requirement, eval_result in zip(requirements, result.results):
+                    if requirement != eval_result.requirement:
+                        print(f"Requirement mismatch: {requirement} != {eval_result.requirement}")
+                    example.requirements[requirement] = {
+                        "requirement": requirement,
+                        "evaluation_plan": eval_result.evaluation_plan,
+                        "plan_execution": eval_result.plan_execution,
+                        "is_applicable": eval_result.is_applicable,
+                        "meets_requirement": eval_result.meets_requirement
+                    }
         
         else:
             results = batch_inference(
@@ -155,10 +172,20 @@ class LLMJudge(dspy.Module):
                     "requirement": requirement,
                     "evaluation_plan": result.evaluation_plan,
                     "plan_execution": result.plan_execution,
+                    "is_applicable": result.is_applicable,
                     "meets_requirement": result.meets_requirement
                 }
 
         return examples
+
+    def calculate_score(self, evaluate_examples, requirement):
+        applicable_examples = [example for example in evaluate_examples if example.requirements[requirement]["is_applicable"]]
+        applicable_ratio = len(applicable_examples) / len(evaluate_examples)
+        if applicable_ratio == 0:
+            score = 1
+        else:
+            score = sum([example.requirements[requirement]['meets_requirement'] for example in applicable_examples]) / len(applicable_examples)
+        return applicable_ratio, score
 
     def evaluate(self, examples, requirements, program=None, aggregate=False):
         examples = copy.deepcopy(examples)
@@ -167,47 +194,13 @@ class LLMJudge(dspy.Module):
         if program is not None:
             examples = run_model(program, examples)
 
-        if aggregate:
-            evaluate_examples = self.forward(examples, requirements, aggregate=aggregate)
-            requirements_unsat = { requirement: [] for requirement in requirements }
-            for example in evaluate_examples:
-                example.requirements = {}
-                for requirement in example.evaluation_result['unsatisfied_requirements']:
-                    if requirement not in requirements_unsat:
-                        # print(f"Requirement not found: {requirement}")
-                        requirement = find_nearest_requirement(requirement, requirements)
-                        # print(f"Nearest requirement: {requirement}")
-
-                    requirements_unsat[requirement].append({
-                        "input": example.inputs().toDict(),
-                        "output": example.output,
-                        "execution": example.evaluation_result['evaluation_execution']
-                    })
-
-                    example.requirements[requirement] = {
-                        "requirement": requirement,
-                        "meets_requirement": False,
-                    }
-                for requirement in requirements:
-                    if requirement not in example.requirements:
-                        example.requirements[requirement] = {
-                            "requirement": requirement,
-                            "meets_requirement": True,
-                        }
-            for requirement, examples in requirements_unsat.items():
-                print(f"Requirement: {requirement}")
-                pass_rate = 1 - len(examples) / len(evaluate_examples)
-                print(f"Pass rate for requirement: {pass_rate}")
-            print(f"Average score: {sum([example.evaluation_result['score'] for example in evaluate_examples]) / len(evaluate_examples)}")
-        else:
-            evaluate_examples = self.forward(examples, requirements)
-            pass_rates = []
-            for requirement in requirements:
-                print(f"Requirement: {requirement}")
-                pass_rate = sum([example.requirements[requirement]['meets_requirement'] for example in evaluate_examples]) / len(evaluate_examples)
-                print(f"Pass rate for requirement: {pass_rate}")
-                pass_rates.append(pass_rate)
-            print(f"Average pass rate: {sum(pass_rates) / len(pass_rates)}")
+        evaluate_examples = self.forward(examples, requirements, aggregate=aggregate)
+        pass_rates = []
+        for requirement in requirements:
+            applicable_ratio, pass_rate = self.calculate_score(evaluate_examples, requirement)
+            print(f"{requirement} | {applicable_ratio} | {pass_rate}")
+            pass_rates.append(pass_rate)
+        print(f"Average pass rate: {sum(pass_rates) / len(pass_rates)}")
         return evaluate_examples
 
 
