@@ -9,8 +9,7 @@ import mlflow
 import numpy as np
 from typing import List, Dict, Any
 from pydantic import BaseModel
-from .textgrad_optimizer import TextGradOptimizer
-from .utils import use_lm, batch_inference, run_model, LM_DICT
+from .utils import use_lm, batch_inference, run_model, cluster_requirements, LM_DICT
 from .judge import IdentifyMistakes, LLMJudge
 from .load_data import prepare_data
 
@@ -25,22 +24,49 @@ Then extract task-level requirements for the task based on the justification. Ma
     requirements: List[str] = dspy.OutputField(desc="Task-level requirements.")
 
 class CritiqueResponseAndSuggestRequirements(dspy.Signature):
-    """You are an experienced requirement engineer for an LLM application. Given the task description, model input, model output, first critique the model output, then suggest additional requirements for the task.
-The suggested requirements should be applicable beyond the specific example provided."""
+    """You are an experienced requirements engineer. Your goal is to extract a list of atomic requirements that specify desired LLM behaviors for the given task.
 
-    task_description = dspy.InputField(desc="Description of the task")
-    model_input = dspy.InputField(desc="The model input")
-    model_output = dspy.InputField(desc="The model output")
-    critique: str = dspy.OutputField(desc="Critique of the model output")
+You will be presented with a model input and several model outputs from different models. First, provide a detailed analysis critiquing the model outputs.
+Then, based on the analysis, suggest a list of atomic requirements that specify desired LLM behaviors for the given task.
+These requirements should be consistent with each other without contradictions and complementary to existing requirements.
+
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any tasks)
+- Requirements should be generally applicable for responses to that task, not referring to any specific input examples
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+- The requirements should be consistent with each other without contradictions
+- The requirements should not overlap with existing requirements
+
+Here are some bad requirements:
+- The output should be interesting. - This is subjective
+- The output should provide examples in fewer than 280 characters. - This overloads multiple aspects
+- The output should be helpful and harmless. - This is overly general
+
+Here are some good atomic requirements:
+- The output should provide examples.
+- The output should be fewer than 280 characters.
+- The output should contain at least 3 references."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    existing_requirements: List[str] = dspy.InputField(desc="List of existing requirements")
+    model_input: str = dspy.InputField(desc="The model input")
+    model_outputs: List[str] = dspy.InputField(desc="The model outputs")
+    analysis: str = dspy.OutputField(desc="Analysis of the model outputs")
+    # similarities_analysis: str = dspy.OutputField(desc="Analysis of consistencies across the model outputs")
+    # differences_analysis: str = dspy.OutputField(desc="Analysis of differences across the model outputs")
     suggested_requirements: List[str] = dspy.OutputField(desc="Suggested additional requirement for the LLM")
 
-class ClassifyRequirement(dspy.Signature):
-    """Classify whether the requirement contains example-specific information. Example-specific information is information that is specific to the given example and not generalizable to other examples. This is in contrast to task-level requirements, which are generalizable to other examples."""
+class RefineRequirement(dspy.Signature):
+    """You are an experienced requirements engineer. Your goal is to curate a list of atomic requirements that specify desired LLM behaviors for the given task.
+Given a task description and a requirements, first decide whether the requirement is too specific. If yes, refine the requirement to be more general. If not, keep the requirement as is."""
 
     task_description = dspy.InputField(desc="Description of the task")
-    model_input = dspy.InputField(desc="The model input")
     requirement = dspy.InputField(desc="The requirement")
-    input_specific: bool = dspy.OutputField(desc="Whether the requirement contains example-specific information.")
+    is_over_specific: bool = dspy.OutputField(desc="Whether the requirement is too specific")
+    refined_requirement: str = dspy.OutputField(desc="Refined requirement")
 
 class GroupRequirements(dspy.Signature):
     """Group requirements into different clusters. Make sure that all provided requirements are put into one of the clusters."""
@@ -213,22 +239,20 @@ class InferRequirementsFromData(dspy.Module):
         self.task_description = task_description
         self.extract = use_lm(self.lm)(dspy.Predict(JustifyResponseAndExtractRequirements))
         self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements))
-        self.classify = use_lm(self.judge_lm)(dspy.ChainOfThought(ClassifyRequirement))
+        self.refine = use_lm(self.judge_lm)(dspy.Predict(RefineRequirement))
         self.group = use_lm(self.lm)(dspy.Predict(GroupRequirements))
 
-
-    def forward(self, examples, n=10):
+    def forward(self, examples, existing_requirements, n=10):
         
         results = batch_inference(self.suggest, [
             {"task_description": self.task_description, 
+             "existing_requirements": existing_requirements,
              "model_input": example.inputs().toDict(), 
-             "model_output": example.output} for example in examples
+             "model_outputs": example.outputs} for example in examples
         ])
 
-        for example, result in zip(examples, results):
-            example.critique, example.requirements = result.critique, result.suggested_requirements
-            
-        all_requirements = [req for example in examples for req in example.requirements]
+        all_requirements = [result.suggested_requirements for result in results]
+        all_requirements = [req for sublist in all_requirements for req in sublist]
 
         # arg_list = [{
         #     "task_description": self.task_description, 
@@ -245,9 +269,10 @@ class InferRequirementsFromData(dspy.Module):
         #     accum += len(example.requirements)
         #     filtered_requirements.extend(example.requirements)
 
-        # grouped_requirements = self.group(task_description=self.task_description, requirements=all_requirements).groups
+        filtered_requirements = cluster_requirements(all_requirements, existing_requirements, num_clusters=len(all_requirements)//3)
         
-        return all_requirements
+        return filtered_requirements
+
 class InferRequirementsFromCompareData(dspy.Module):
 
     def __init__(self, task_description, lm, judge_lm):
