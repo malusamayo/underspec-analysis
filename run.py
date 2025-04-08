@@ -4,14 +4,11 @@ import json
 import argparse
 import os
 import copy
-from dotenv import load_dotenv
 import dspy
 import litellm
 import mlflow
 from analysis.load_data import prepare_data
 from analysis.utils import run_model, LM_DICT
-
-load_dotenv()
 
 def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset, n_samples=5, requirements=None, judge=None):
     if not os.path.exists(f"data/results/{task}"):
