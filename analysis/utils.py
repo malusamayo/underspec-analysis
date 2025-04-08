@@ -103,12 +103,38 @@ def find_nearest_requirement(requirement, requirements):
         distances.append(np.dot(requirement_embedding, req_embedding) / (np.linalg.norm(requirement_embedding) * np.linalg.norm(req_embedding)))
     return requirements[np.argmax(distances)]
 
-def cluster_requirements(requirements, num_clusters=40):
+def remove_duplicates(requirements_df, existing_requirements_df=None, similarity_threshold=0.9):
+    to_keep = []
+    if existing_requirements_df is not None:
+        to_keep = existing_requirements_df.to_dict(orient="records")
+
+    for _, row in requirements_df.iterrows():
+        for kept in to_keep:
+            sim_score = np.dot(
+                row['ada_embedding'],
+                kept['ada_embedding']
+            ) / (np.linalg.norm(row['ada_embedding']) * np.linalg.norm(kept['ada_embedding']))
+            if sim_score > similarity_threshold:
+                # print(f"Removing duplicate: {row['requirements']} (similar to {kept['requirements']})")
+                break
+        else:
+            to_keep.append(row)
+
+    return pd.DataFrame(to_keep)
+
+
+def cluster_requirements(requirements, existing_requirements=[], num_clusters=40):
     
     requirement_df = pd.DataFrame({"requirements": requirements})
     requirement_df['ada_embedding'] =  batch_inference(
         lambda requirement: litellm.embedding(model='openai/text-embedding-ada-002', input=[requirement]).data[0]['embedding'],
         [{"requirement": req} for req in requirements]
+    )
+
+    existing_requirements_df = pd.DataFrame({"requirements": existing_requirements})
+    existing_requirements_df['ada_embedding'] = batch_inference(
+        lambda requirement: litellm.embedding(model='openai/text-embedding-ada-002', input=[requirement]).data[0]['embedding'],
+        [{"requirement": req} for req in existing_requirements]
     )
 
     # cluster the requirements
@@ -121,15 +147,21 @@ def cluster_requirements(requirements, num_clusters=40):
     clusters_to_remove = cluster_counts[cluster_counts < 2].index
     requirement_df = requirement_df[~requirement_df['cluster'].isin(clusters_to_remove)]
 
+    requirement_df = remove_duplicates(requirement_df, existing_requirements_df)
+    requirement_df = requirement_df[~requirement_df['requirements'].isin(existing_requirements)]
+
     # print the clusters
     for i in range(num_clusters):
         subset = requirement_df[requirement_df['cluster'] == i]['requirements']
         if len(subset) == 0:
             continue
+        # subset = remove_duplicates(subset)['requirements']
         print(f"Cluster {i}:")
         for req in subset:
             print(f"  - {req}")
         print()
+
+    return requirement_df['requirements'].to_list()
 
 def requirements_to_str(requirements):
     if len(requirements) == 0:
