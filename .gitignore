@@ -3,5 +3,6 @@ data/
 mlruns/
 
 .env
+wine-vertex-ai.json
 poetry.lock
 slurm-*.out
