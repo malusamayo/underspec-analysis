@@ -13,7 +13,7 @@ import time
 import json
 from dotenv import load_dotenv
 
-load_dotenv()
+load_dotenv(override=True)
 
 LM_DICT = {
     "gpt-4o": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0),
@@ -27,11 +27,12 @@ LM_DICT = {
     "gemini-1.5-flash": dspy.LM('openai/gemini-1.5-flash-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
     "gemini-2.5-pro": dspy.LM('vertex_ai/gemini-2.5-pro-preview-03-25', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS"), 'r')))),
     "claude-3.5-sonnet": dspy.LM('openai/claude-3-5-sonnet-20241022', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "llama3-2-11b-instruct": dspy.LM('openai/llama3-2-11b-instruct', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "llama3-2-90b-instruct": dspy.LM('openai/llama3-2-90b-instruct', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
+    "llama3-2-11b-instruct": dspy.LM('openai/llama3-2-11b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
+    "llama3-2-90b-instruct": dspy.LM('openai/llama3-2-90b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
     "mixtral-8x7b": dspy.LM('bedrock/mistral.mixtral-8x7b-instruct-v0:1', temperature=1.0),
     "qwen2.5-7b": dspy.LM('hosted_vllm/Qwen/Qwen2.5-7B-Instruct', temperature=0.7, api_base=os.environ.get("BABEL_API_BASE")),
     "ministral-8b": dspy.LM('hosted_vllm/mistralai/Ministral-8B-Instruct-2410', temperature=0, api_base=os.environ.get("BABEL_API_BASE")),
+    "llama3-8b": dspy.LM('hosted_vllm/meta-llama/Meta-Llama-3-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
     "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
 }
 

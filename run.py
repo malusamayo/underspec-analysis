@@ -41,12 +41,12 @@ def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset
         
         with open(f"data/results/{task}/{model_name}_{prompt_name}_scores.json", "r") as f:
             score_matrix = json.load(f)
-        score_matrix |= {requirement: [[] for _ in range(n_samples)] for requirement in requirements if requirement not in score_matrix}
+        score_matrix |= {requirement["requirement"]: [[] for _ in range(n_samples)] for requirement in requirements if requirement["requirement"] not in score_matrix}
     else:
-        score_matrix = {requirement: [[] for _ in range(n_samples)] for requirement in requirements}
+        score_matrix = {requirement["requirement"]: [[] for _ in range(n_samples)] for requirement in requirements}
 
     # identify requirement not evaluated yet
-    requirements_not_evaluated = [requirement for requirement in requirements if requirement not in score_matrix or len(score_matrix[requirement][0]) < len(valset_2)]
+    requirements_not_evaluated = [requirement for requirement in requirements if requirement["requirement"] not in score_matrix or len(score_matrix[requirement["requirement"]][0]) < len(valset_2)]
     
     if len(requirements_not_evaluated) > 0:
         for i in range(n_samples):
@@ -56,6 +56,7 @@ def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset
             valset_2 = judge.evaluate(valset_2, requirements=requirements_not_evaluated)
             for example in valset_2:
                 for requirement in requirements_not_evaluated:
+                    requirement = requirement["requirement"]
                     score_matrix[requirement][i].append(example.requirements[requirement]["meets_requirement"])
                 if not hasattr(example, "requirements_dict"):
                     example.requirements_dict = {}
@@ -71,6 +72,7 @@ def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset
     for i in range(n_samples):
         pass_rates = {}
         for requirement in requirements:
+            requirement = requirement["requirement"]
             pass_rates[requirement] = str(sum(score_matrix[requirement][i]) / len(valset_2))
         # print(i)
         print(','.join(list(pass_rates.values())))
