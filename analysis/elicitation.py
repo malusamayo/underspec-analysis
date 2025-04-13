@@ -61,12 +61,34 @@ Here are some good atomic requirements:
 
 class RefineRequirement(dspy.Signature):
     """You are an experienced requirements engineer. Your goal is to curate a list of atomic requirements that specify desired LLM behaviors for the given task.
-Given a task description and a requirements, first decide whether the requirement is too specific. If yes, refine the requirement to be more general. If not, keep the requirement as is."""
+Given a task description and a requirements, first decide whether the requirement is too specific. If yes, refine the requirement to be more general. If not, keep the requirement as is.
+
+Examples of overly specific requirements:
+- The explanation should include the significance of the main check (__name__ == '__main__').
+- The main character should be a talking fox who escapes from a science lab in New York City.
+
+Examples of acceptable requirements:
+- The summary should include key methods and datasets used in the paper.
+- The plot should be engaging and include unexpected developments to maintain interest."""
 
     task_description = dspy.InputField(desc="Description of the task")
     requirement = dspy.InputField(desc="The requirement")
     is_over_specific: bool = dspy.OutputField(desc="Whether the requirement is too specific")
     refined_requirement: str = dspy.OutputField(desc="Refined requirement")
+
+class PriorityItem(BaseModel):
+    """A requirement with its priority level."""
+    requirement: str
+    importance_analysis: str
+    priority: str
+
+class PrioritizeRequirements(dspy.Signature):
+    """You are a developer working on LLM application. You have recieived a list of requirements from the product manger.
+For each requirement, analyze its importance and assign a priority level to it. The priority levels are: high, medium, low."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    requirements: List[str] = dspy.InputField(desc="List of requirements")
+    priorities: List[PriorityItem] = dspy.OutputField(desc="Priorities for each requirement with their full description")
 
 class GroupRequirements(dspy.Signature):
     """Group requirements into different clusters. Make sure that all provided requirements are put into one of the clusters."""
@@ -236,11 +258,15 @@ class InferRequirementsFromData(dspy.Module):
     def __init__(self, task_description, lm, judge_lm):
         self.lm = lm
         self.judge_lm = judge_lm
+        self.long_context_lm = copy.deepcopy(lm)
+        self.long_context_lm.kwargs["max_tokens"] = 16384
+
         self.task_description = task_description
         self.extract = use_lm(self.lm)(dspy.Predict(JustifyResponseAndExtractRequirements))
         self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements))
-        self.refine = use_lm(self.judge_lm)(dspy.Predict(RefineRequirement))
-        self.group = use_lm(self.lm)(dspy.Predict(GroupRequirements))
+        self.refine = use_lm(self.lm)(dspy.Predict(RefineRequirement))
+        self.group = use_lm(self.long_context_lm)(dspy.Predict(GroupRequirements))
+        self.prioritize = use_lm(self.long_context_lm)(dspy.Predict(PrioritizeRequirements))
 
     def forward(self, examples, existing_requirements, n=10):
         
@@ -253,6 +279,27 @@ class InferRequirementsFromData(dspy.Module):
 
         all_requirements = [result.suggested_requirements for result in results]
         all_requirements = [req for sublist in all_requirements for req in sublist]
+
+        results = batch_inference(self.refine, [
+            {"task_description": self.task_description,
+                "requirement": requirement} for requirement in all_requirements
+        ])
+        for i, requirement in enumerate(all_requirements):
+            if results[i].is_over_specific:
+                # print(f"Refining requirement: {requirement}")
+                # print(f"Refined requirement: {results[i].refined_requirement}")
+                all_requirements[i] = results[i].refined_requirement
+
+        # self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements, n=10))
+        # results = batch_inference(self.suggest, [
+        #     {"task_description": self.task_description, 
+        #      "existing_requirements": existing_requirements,
+        #      "model_input": example.inputs().toDict(), 
+        #      "model_outputs": example.outputs} for example in examples
+        # ])
+
+        # print(all_requirements)
+        # print(results[0].completions.suggested_requirements)
 
         # arg_list = [{
         #     "task_description": self.task_description, 
@@ -270,8 +317,10 @@ class InferRequirementsFromData(dspy.Module):
         #     filtered_requirements.extend(example.requirements)
 
         filtered_requirements = cluster_requirements(all_requirements, existing_requirements, num_clusters=len(all_requirements)//3)
+
+        priorities = self.prioritize(task_description=self.task_description, requirements=filtered_requirements).priorities
         
-        return filtered_requirements
+        return filtered_requirements, priorities
 
 class InferRequirementsFromCompareData(dspy.Module):
 
