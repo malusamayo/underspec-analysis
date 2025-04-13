@@ -10,21 +10,45 @@ class EvalResult(BaseModel):
     requirement: str
     evaluation_plan: str
     plan_execution: str
+    is_applicable: bool
     meets_requirement: bool
 
+class GenerateEvaluationPlan(dspy.Signature):
+    """You are a reviewer who is evaluating whether a model output satisfies the given requirement. Given a task description, examples, and requirement, draft a step-by-step evaluation plan for the requirement. 
+
+Follow the guideline below:
+- The evaluation plan should be a step-by-step process to evaluate if the requirement is met.
+- The evaluation plan should be concise and clear, and lead to a final judgment on whether the model output meets the requirement. 
+- When requirements are conditional (e.g., indicated by "if applicable"), the evaluation plan should include a step to check if the requirement is applicable to an example input.
+- The evaluation plan should only include the steps to evaluate the requirement, and not include any additional feedback or suggestions, or steps to evaluate other related requirements."""
+    
+    task_description: str = dspy.InputField(desc="Description of the task")
+    examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
+    requirement: str = dspy.InputField(desc="The requirement to evaluate")
+    evaluation_plan: str = dspy.OutputField(desc="The evaluation plan for the requirement")
+
+class GenerateEvaluationFunction(dspy.Signature):
+    """You are a reviewer who is evaluating whether a model output satisfies the given requirement. Given a task description, examples, and requirement, write a Python function to evaluate the requirement.
+    
+The Python function `evaluation_function` takes task_description, model_input, and model_output as input arguments and returns a boolean value indicating whether the requirement is met."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
+    requirement: str = dspy.InputField(desc="The requirement to evaluate")
+    evaluation_function: str = dspy.OutputField(desc="The Python function to evaluate the requirement")
 
 class EvaluateRequirement(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given requirement. 
-    Given a task description, model input, model output, and requirement, first generate a step-by-step evaluation plan for the requirement, then execute the evaluation plan to evaluate if the model output meets the requirement.
-    Note that sometimes a requirement may not be directly applicable, the evaluation plan should include a step to check if the requirement is applicable to the task. If the requirement is not applicable, return True for meets_requirement."""
+    
+Given a task description, model input, model output, a requirement and its step-by-step evaluation plan, execute the evaluation plan to evaluate if the model output meets the requirement. If the requirement is not applicable, return True for meets_requirement."""
     
     task_description = dspy.InputField(desc="Description of the task")
     model_input = dspy.InputField(desc="The model input")
     model_output = dspy.InputField(desc="The model output")
     requirement = dspy.InputField(desc="The requirement to evaluate")
-    evaluation_plan: str = dspy.OutputField(desc="The evaluation plan for the requirement")
+    evaluation_plan: str = dspy.InputField(desc="The evaluation plan for the requirement")
     plan_execution: str = dspy.OutputField(desc="The execution of the evaluation plan")
-    is_applicable: bool = dspy.OutputField(desc="Whether the requirement is applicable to the task, True or False")
+    is_applicable: bool = dspy.OutputField(desc="Whether the requirement is applicable to the input example, True or False")
     meets_requirement: bool = dspy.OutputField(desc="Whether the model output meets the requirement, True or False")
 
 class EvaluateGuideline(dspy.Signature):
@@ -77,10 +101,26 @@ class LLMJudge(dspy.Module):
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
 
     def evaluate_requirement(self, example, requirement):
-        return self.evaluator(task_description=self.task_description, 
-                            model_input="" if self.omit_input else example.inputs().toDict(), 
-                            model_output=example.output, 
-                            requirement=requirement)
+        if "python" in requirement.keys():
+            local_vars = {}
+            exec(requirement["evaluation_plan"], {}, local_vars)
+            func = next(val for val in local_vars.values() if callable(val))
+            meets_rquirement = func(task_description=self.task_description,
+                                model_input="" if self.omit_input else example.inputs().toDict(), 
+                                model_output=example.output)
+            return EvalResult(
+                requirement=requirement["requirement"],
+                evaluation_plan=requirement["evaluation_plan"],
+                plan_execution="",
+                is_applicable=True,
+                meets_requirement=meets_rquirement                
+            )
+        else:
+            return self.evaluator(task_description=self.task_description, 
+                                model_input="" if self.omit_input else example.inputs().toDict(), 
+                                model_output=example.output, 
+                                requirement=requirement["requirement"],
+                                evaluation_plan=requirement["evaluation_plan"])
     
     def evaluate_guideline(self, example, guideline):
         return self.aggregate_evaluator(task_description=self.task_description, 
@@ -168,9 +208,9 @@ class LLMJudge(dspy.Module):
                 # create the requirements field if it doesn't exist
                 if not hasattr(examples[example_id], "requirements"):
                     examples[example_id].requirements = {}
-                examples[example_id].requirements[requirement] = {
-                    "requirement": requirement,
-                    "evaluation_plan": result.evaluation_plan,
+                examples[example_id].requirements[requirement["requirement"]] = {
+                    "requirement": requirement["requirement"],
+                    "evaluation_plan": requirement["evaluation_plan"],
                     "plan_execution": result.plan_execution,
                     "is_applicable": result.is_applicable,
                     "meets_requirement": result.meets_requirement
@@ -197,8 +237,9 @@ class LLMJudge(dspy.Module):
         evaluate_examples = self.forward(examples, requirements, aggregate=aggregate)
         pass_rates = []
         for requirement in requirements:
+            requirement = requirement["requirement"]
             applicable_ratio, pass_rate = self.calculate_score(evaluate_examples, requirement)
-            print(f"{requirement} | {applicable_ratio} | {pass_rate}")
+            print(f"{requirement};{applicable_ratio};{pass_rate}")
             pass_rates.append(pass_rate)
         print(f"Average pass rate: {sum(pass_rates) / len(pass_rates)}")
         return evaluate_examples
