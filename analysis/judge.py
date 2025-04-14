@@ -89,6 +89,112 @@ Then, compare the two model outputs based on how many requirements each output s
     reasoning: str = dspy.OutputField(desc="The reasoning for the comparison")
     better_output: str = dspy.OutputField(desc="The model output that better satisfies the guideline, either 'A' or 'B', or 'tie' if they are equal")
 
+class DetermineEvalType(dspy.Signature):
+    """You are a reviewer who is determining whether a requirement can be evaluated with a Python program or requires an LLM-based evaluation.
+    
+Given a task description, examples, and a requirement, determine if the requirement can be evaluated with a Python program or requires an LLM-based evaluation.
+Requirements that can be evaluated with Python programs typically involve:
+- Counting words, characters, or specific elements
+- Measuring numerical values or thresholds
+
+Requirements that require LLM-based evaluation typically involve:
+- Subjective judgments
+- Semantic understanding
+- Complex reasoning
+- Contextual appropriateness
+- Quality assessments"""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
+    requirement: str = dspy.InputField(desc="The requirement to evaluate")
+    can_evaluate_with_python: bool = dspy.OutputField(desc="Whether the requirement can be evaluated with a Python program")
+
+
+class EvalGenerator(dspy.Module):
+    
+    def __init__(self, task_description, lm, judge_lm, max_workers=32):
+        self.lm = lm
+        self.judge_lm = judge_lm
+        self.task_description = task_description
+        self.max_workers = max_workers
+        
+        # Initialize the necessary predictors
+        self.determine_eval_type = use_lm(self.lm)(dspy.ChainOfThought(DetermineEvalType))
+        self.generate_eval_plan = use_lm(self.lm)(dspy.Predict(GenerateEvaluationPlan))
+        self.generate_eval_func = use_lm(self.lm)(dspy.Predict(GenerateEvaluationFunction))
+    
+    def process_single_requirement(self, examples, requirement):
+        """Process a single requirement to determine its evaluation type and generate the appropriate evaluation plan or function.
+        
+        Args:
+            example_dict: A dictionary containing:
+                - examples: A list of example dictionaries
+                - requirement: The requirement string to evaluate
+                
+        Returns:
+            A dictionary containing:
+                - requirement: The original requirement string
+                - evaluation_type: Either "python" or "llm"
+                - evaluation_plan: The evaluation plan or function
+        """
+        
+        # Determine the evaluation type
+        eval_type = self.determine_eval_type(
+            task_description=self.task_description,
+            examples=examples,
+            requirement=requirement
+        )
+        
+        # Generate the appropriate evaluation method
+        if eval_type.can_evaluate_with_python:
+            # Generate a Python evaluation function
+            eval_func = self.generate_eval_func(
+                task_description=self.task_description,
+                examples=examples,
+                requirement=requirement
+            )
+            
+            return {
+                "requirement": requirement,
+                "evaluation_type": "python",
+                "evaluation_plan": eval_func.evaluation_function
+            }
+        else:
+            # Generate an LLM-based evaluation plan
+            eval_plan = self.generate_eval_plan(
+                task_description=self.task_description,
+                examples=examples,
+                requirement=requirement
+            )
+            
+            return {
+                "requirement": requirement,
+                "evaluation_type": "llm",
+                "evaluation_plan": eval_plan.evaluation_plan
+            }
+    
+    def forward(self, examples, requirements):
+        """Generate evaluation plans or functions for a list of requirements.
+        
+        Args:
+            examples: A list of example dictionaries
+            requirements: A list of requirement strings
+            
+        Returns:
+            A list of dictionaries, each containing:
+            - requirement: The original requirement string
+            - evaluation_type: Either "python" or "llm"
+            - evaluation_plan: The evaluation plan or function
+        """
+        # Prepare the input for batch inference
+        # Process all requirements in parallel using batch inference
+        results = batch_inference(
+            self.process_single_requirement,
+            [{"examples": examples, "requirement": req} for req in requirements],
+            max_workers=self.max_workers
+        )
+        
+        return results
 
 class LLMJudge(dspy.Module):
     def __init__(self, task_description, lm, max_workers=32, omit_input=False):
@@ -101,7 +207,7 @@ class LLMJudge(dspy.Module):
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
 
     def evaluate_requirement(self, example, requirement):
-        if "python" in requirement.keys():
+        if requirement["evaluation_type"] == "python":
             local_vars = {}
             exec(requirement["evaluation_plan"], {}, local_vars)
             func = next(val for val in local_vars.values() if callable(val))
