@@ -7,11 +7,12 @@ import json
 import argparse
 import mlflow
 import numpy as np
+import pandas as pd
 from typing import List, Dict, Any
 from pydantic import BaseModel
 from .utils import use_lm, batch_inference, run_model, cluster_requirements, LM_DICT
 from .judge import IdentifyMistakes, LLMJudge
-from .load_data import prepare_data
+from .load_data import prepare_data, load_data
 
 class JustifyResponseAndExtractRequirements(dspy.Signature):
     """You are an LLM working on a user-given task. First, provide justification for the model output you produce. The justification should explain why the model output is appropriate for the given task. 
@@ -76,19 +77,30 @@ Examples of acceptable requirements:
     is_over_specific: bool = dspy.OutputField(desc="Whether the requirement is too specific")
     refined_requirement: str = dspy.OutputField(desc="Refined requirement")
 
-class PriorityItem(BaseModel):
+class RiskItem(BaseModel):
     """A requirement with its priority level."""
     requirement: str
-    importance_analysis: str
-    priority: str
+    risk_analysis: str
+    risk_level: str
 
-class PrioritizeRequirements(dspy.Signature):
-    """You are a developer working on LLM application. You have recieived a list of requirements from the product manger.
-For each requirement, analyze its importance and assign a priority level to it. The priority levels are: high, medium, low."""
+class AnalyzeRequirement(dspy.Signature):
+    """You are a product risk analyst working on an LLM application. You have received a requirement from the product manager.
+
+For the given requirement, analyze the risk associated with failing to implement it properly. Risk in this context refers to the potential negative consequences to the business, legal exposure, or harm to the user if the requirement is not met.
+
+Assign a risk level to the requirement:
+- High Risk: If unmet, this could result in significant legal, financial, or reputational damage. For example, in a travel plan app, if a client follows an inaccurate itinerary and suffers harm or loss, they might have grounds to sue.
+- Medium Risk: If unmet, this could lead to moderate user dissatisfaction or operational inefficiencies but is unlikely to cause legal issues or serious harm.
+- Low Risk: If unmet, this would only result in minor inconvenience or cosmetic issues with little to no long-term impact.
+
+Clearly justify the risk level you assign to the requirement. The risk levels are 'high', 'medium', or 'low'."""
 
     task_description: str = dspy.InputField(desc="Description of the task")
-    requirements: List[str] = dspy.InputField(desc="List of requirements")
-    priorities: List[PriorityItem] = dspy.OutputField(desc="Priorities for each requirement with their full description")
+    requirement = dspy.InputField(desc="The given requirement")
+    risk_analysis: str = dspy.OutputField(desc="Risk analysis of the requirement")
+    risk_level: str = dspy.OutputField(desc="Risk level in 'high', 'medium', or 'low'")
+    # requirements: List[str] = dspy.InputField(desc="List of requirements")
+    # risks: List[RiskItem] = dspy.OutputField(desc="List of requirements with their risk levels and analysis")
 
 class GroupRequirements(dspy.Signature):
     """Group requirements into different clusters. Make sure that all provided requirements are put into one of the clusters."""
@@ -143,7 +155,6 @@ class ExtractRequirementsFromPrompt(dspy.Signature):
     """You are an experienced requirements engineer. Your goal is to extract a list of atomic requirements from the provided prompt.
 
 Guidelines:
-- Each requirement should test exactly ONE requirement
 - Requirements should be easily verifiable, almost as if writing a Boolean condition in Python
 - Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
 - Requirements should be generally applicable for responses to that task, not referring to any specific response
@@ -152,7 +163,6 @@ Guidelines:
 
 Here are some bad requirements:
 - The output should be interesting. - This is subjective
-- The output should discuss cats in fewer than 280 characters. - This overloads multiple aspects
 - The output should be helpful and harmless. - This is overly general
 
 Here are some good atomic requirements:
@@ -201,6 +211,59 @@ class BrainstormRequirements(dspy.Signature):
     n: int = dspy.InputField(desc="Number of requirements to brainstorm")
     requirements: List[str] = dspy.OutputField(desc="A list of requirements")
 
+class BrainstormAdditionalRequirementsRiskAware(dspy.Signature):
+    """You are an experienced requirements engineer. Your goal is to brainstorm a list of high-risk requirements that specify desired LLM behaviors for the given task.
+Risk in this context refers to the potential negative consequences to the business, legal exposure, or harm to the user if the requirement is not met.
+
+These requirements should be consistent with each other without contradictions and complementary to existing requirements.
+    
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python. They should be testable with Python code or an LLM itself (no human judgment or external sources needed).
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
+- Requirements should be generally applicable for responses to that task, not referring to any specific response
+- Requirements should be high-risk, meaning that if unmet, this could result in significant legal, financial, or reputational damage. 
+- Avoid unrealistic edge cases - focus on plausible failures that could occur even in aligned or well-trained LLMs.
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+- Never generate similar requirements to the existing requirements
+
+Here are some bad requirements:
+- The output should be interesting. - This is subjective
+- The output should discuss cats in fewer than 280 characters. - This overloads multiple aspects
+- The output should be helpful and harmless. - This is overly general
+
+Here are some good atomic requirements:
+- The output should discuss cats.
+- The output should be fewer than 280 characters.
+- The output should contain at least 3 references."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    existing_requirements: List[str] = dspy.InputField(desc="List of existing requirements")
+    n: int = dspy.InputField(desc="Number of requirements to brainstorm")
+    requirements: List[str] = dspy.OutputField(desc="A list of requirements")
+
+class BrainstormAdditionalRequirementsCustomerExperience(dspy.Signature):
+    """You are an experienced requirements engineer. Your goal is to brainstorm a list of requirements that specify desired LLM behaviors for the given task.
+These requirements should identify behaviors that, if omitted, would likely frustrate or annoy users -- such as forgetting to surface important reminders, warnings, or common-sense.
+
+These requirements should be consistent with each other without contradictions and complementary to existing requirements.
+    
+Guidelines:
+- Each requirement should test exactly ONE requirement
+- Requirements should be easily verifiable, almost as if writing a Boolean condition in Python. They should be testable with Python code or an LLM itself (no human judgment or external sources needed).
+- Requirements should not be overly general (i.e. they should not be universal requirements that might apply to any reasonable reasponse)
+- Requirements should be generally applicable for responses to that task, not referring to any specific response
+- Avoid unrealistic edge cases - focus on plausible failures that could occur even in aligned or well-trained LLMs.
+- Focus only on objective, measurable requirements
+- Use concise and unambiguous language
+- Never generate similar requirements to the existing requirements"""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    existing_requirements: List[str] = dspy.InputField(desc="List of existing requirements")
+    failure_mode_analysis: str = dspy.OutputField(desc="Failure modes that would lead to user dissatisfaction or confusion if not caught")
+    requirements: List[str] = dspy.OutputField(desc="A list of requirements")
+
 class BrainstormAdditionalRequirements(dspy.Signature):
     """You are an experienced requirements engineer. Your goal is to brainstorm a list of atomic requirements that augment the existing requirements.
 These requirements should be consistent with each other without contradictions and complementary to existing requirements.
@@ -242,31 +305,33 @@ class InferRequirementsFromTask(dspy.Module):
         self.lm = lm
         self.task_description = task_description
         self.suggest = use_lm(self.lm)(dspy.Predict(BrainstormRequirements))
-        self.suggest_with_prompt = use_lm(self.lm)(dspy.ChainOfThought(BrainstormAdditionalRequirements))
+        self.suggest_with_prompt = use_lm(self.lm)(dspy.Predict(BrainstormAdditionalRequirementsCustomerExperience))
     
     def forward(self, existing_requirements=[], n=20):
-        if existing_requirements == []:
-            return self.suggest(task_description=self.task_description, n=n).requirements
-        else:
-            return self.suggest_with_prompt(
+        all_requirements = copy.deepcopy(existing_requirements)
+        target_count = n + len(existing_requirements)
+        
+        # Iteratively add more requirements until we reach n
+        while len(all_requirements) < target_count:
+            
+            new_requirements = self.suggest_with_prompt(
                 task_description=self.task_description, 
-                existing_requirements=existing_requirements, n=n).requirements
-    
+                existing_requirements=all_requirements).requirements
+            
+            all_requirements.extend(new_requirements)
+        
+        return all_requirements[target_count-n:target_count]
 
 class InferRequirementsFromData(dspy.Module):
 
     def __init__(self, task_description, lm, judge_lm):
         self.lm = lm
         self.judge_lm = judge_lm
-        self.long_context_lm = copy.deepcopy(lm)
-        self.long_context_lm.kwargs["max_tokens"] = 16384
 
         self.task_description = task_description
         self.extract = use_lm(self.lm)(dspy.Predict(JustifyResponseAndExtractRequirements))
         self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements))
         self.refine = use_lm(self.lm)(dspy.Predict(RefineRequirement))
-        self.group = use_lm(self.long_context_lm)(dspy.Predict(GroupRequirements))
-        self.prioritize = use_lm(self.long_context_lm)(dspy.Predict(PrioritizeRequirements))
 
     def forward(self, examples, existing_requirements, n=10):
         
@@ -315,12 +380,8 @@ class InferRequirementsFromData(dspy.Module):
         #     example.requirements = [req for j, req in enumerate(example.requirements) if not results[accum + j].input_specific]
         #     accum += len(example.requirements)
         #     filtered_requirements.extend(example.requirements)
-
-        filtered_requirements = cluster_requirements(all_requirements, existing_requirements, num_clusters=len(all_requirements)//3)
-
-        priorities = self.prioritize(task_description=self.task_description, requirements=filtered_requirements).priorities
         
-        return filtered_requirements, priorities
+        return all_requirements
 
 class InferRequirementsFromCompareData(dspy.Module):
 
@@ -371,6 +432,105 @@ class InferRequirementsFromCompareData(dspy.Module):
 
         return requirements
         
+class ElicitRequirements(dspy.Module):
+
+    def __init__(self, task_description, lm, analyst_lms, judge_lm):
+        self.lm = lm
+        self.analyst_lms = analyst_lms
+        self.judge_lm = judge_lm
+        self.long_context_lm = copy.deepcopy(lm)
+        self.long_context_lm.kwargs["max_tokens"] = 16384
+
+        self.task_description = task_description
+        self.extract = use_lm(self.lm)(dspy.Predict(JustifyResponseAndExtractRequirements))
+        self.suggest = use_lm(self.lm)(dspy.Predict(CritiqueResponseAndSuggestRequirements))
+        self.refine = use_lm(self.lm)(dspy.Predict(RefineRequirement))
+        self.group = use_lm(self.long_context_lm)(dspy.Predict(GroupRequirements))
+        # self.rerank = use_lm(self.long_context_lm)(dspy.Predict(RerankRequirements))
+        self.analyze = use_lm(self.lm)(dspy.Predict(AnalyzeRequirement))
+
+
+    def forward(self, prompt, trainset):
+
+        requirements_dicts = []
+
+        extract = use_lm(self.lm)(dspy.Predict(ExtractRequirementsFromPrompt))
+        existing_requirements = extract(prompt=prompt).requirements
+
+        print(existing_requirements)
+
+        for req in existing_requirements:
+            requirements_dicts.append(
+                {
+                    "task": task,
+                    "analyst": self.lm.model,
+                    "source": "prompt",
+                    "requirement": req
+                }
+            )
+
+        for analyst_lm in  self.analyst_lms:
+            infer = InferRequirementsFromTask(task_description=task_description, lm=analyst_lm)
+            new_requirements = infer(existing_requirements=existing_requirements, n=20)
+            print(new_requirements)
+
+            for req in new_requirements:
+                requirements_dicts.append(
+                    {
+                        "task": task,
+                        "analyst": analyst_lm.model,
+                        "source": "top-down",
+                        "requirement": req
+                    }
+                )
+
+            infer = InferRequirementsFromData(task_description=task_description, lm=analyst_lm, judge_lm=self.judge_lm)
+            new_requirements = infer(trainset, existing_requirements)
+            print(new_requirements)
+
+            for req in new_requirements:
+                requirements_dicts.append(
+                    {
+                        "task": task,
+                        "analyst": analyst_lm.model,
+                        "source": "bottom-up",
+                        "requirement": req
+                    }
+                )
+
+
+        all_requirements = [req["requirement"] for req in requirements_dicts]
+        filtered_requirements = cluster_requirements(all_requirements, existing_requirements, num_clusters=len(all_requirements)//3)
+
+        results = batch_inference(self.analyze, [
+            {"task_description": self.task_description, 
+             "requirement": requirement} for requirement in filtered_requirements
+        ])
+
+
+        requirements_map = {req["requirement"]: req for req in requirements_dicts}
+        filtered_requirements_dicts = []
+        for req, result in zip(filtered_requirements, results):
+            req_dict = copy.deepcopy(requirements_map[req])
+            req_dict['risk_analysis'] = result.risk_analysis
+            req_dict['risk_level'] = result.risk_level.lower()
+            filtered_requirements_dicts.append(req_dict)
+            
+
+        # risks = self.rerank(task_description=task_description, requirements=filtered_requirements).risks
+        # risk_map = {req.requirement: req for req in risks}
+        # requiremets_map = {req["requirement"]: req for req in requirements_dicts}
+
+        # filtered_requirements_dicts = []
+        # for req in filtered_requirements:
+        #     req_dict = copy.deepcopy(requiremets_map[req])
+        #     req_dict |= risk_map[req].dict()
+        #     filtered_requirements_dicts.append(req_dict)
+            
+        requirements_df = pd.DataFrame(filtered_requirements_dicts)
+
+        return requirements_df
+
 class InferRequirements(dspy.Module):
 
     def __init__(self, task_description, lm):
@@ -511,28 +671,24 @@ if __name__ == "__main__":
         print(experiment.experiment_id)
 
     task = "commitpack"
-    # task = "arxiv"
-    # task = "product"
+    task = "product"
+    task = "trip"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
 
     prompt_model = LM_DICT["gpt-4o"]
 
-    model_names = ["gpt-4o-mini", "gemini-1.5-flash"]
+    model_names = ["gpt-4o-mini", "gemini-1.5-flash", "llama3-2-11b-instruct"]
     prompt_name = "original"
+
     trainsets = []
     for model_name in model_names:
         task_model = LM_DICT[model_name]
         task_program = TaskProgram(lm=task_model, n=1)
-        if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json"):
-            print("Running model...")
-            trainset_2 = run_model(task_program, trainset, max_workers=32)
-        else:
-            print("Loading data from cache...")
-            with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "r") as f:
-                trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
-        trainsets.append(trainset_2)
+        trainset, _ = load_data(task=task, model_name=model_name, prompt_name=prompt_name,
+                                task_program=task_program, trainset=trainset, valset=[])
+        trainsets.append(trainset)
     
     # merge trainsets output into outputs
     trainset = [
@@ -540,12 +696,51 @@ if __name__ == "__main__":
         for examples in zip(*trainsets)
     ]
 
-    from analysis.elicitation import (
-        ExtractRequirementsFromPrompt,
-        InferRequirementsFromCompareData,
-        InferRequirementsFromTask,
-        IterativeRequirementsSearch,
-    )
+
+    analyst_lms = [
+        LM_DICT["gpt-4o"], 
+        # LM_DICT["gemini-1.5-pro"],
+        # LM_DICT["llama3-2-90b-instruct"],
+    ]
+
+    requirements_dict = []
+
+    elicit = ElicitRequirements(task_description=task_description, lm=prompt_model, analyst_lms=analyst_lms, judge_lm=LM_DICT["4.1-mini-eval"])
+    requirements_df = elicit(task_program.prompt, trainset[:20])
+    requirements_df.to_csv(f"data/requirements/{task}_prioritized_requirements.csv", index=False)
+
+    print(json.dumps(requirements_df.to_dict(orient="records"), indent=4))
+    exit(0)
+
+
+    judge = LLMJudge(task_description, LM_DICT["4.1-mini-eval"])
+
+    all_examples = []
+    L = len(trainset[0].outputs)
+    for i in range(L):
+        for example in trainset:
+            example.output = example.outputs[i]
+        results = judge.evaluate(trainset, requirements=requirements)
+        for requirement in requirements:
+            pass_rates = sum([example.requirements[requirement]['meets_requirement'] for example in results]) / len(results)
+            for example in results:
+                all_examples.append({
+                    "input": example.inputs().toDict()[task_program.input_key],
+                    "output": example.output,
+                    "model": model_names[i],
+                    "requirement": requirement,
+                } | example.requirements[requirement])
+
+    # save all examples to csv
+    import pandas as pd
+    df = pd.DataFrame(all_examples)
+    df.to_csv(f"temp.csv", index=False)
+
+    ## to markdown
+    df.to_markdown(f"temp.md", index=False)
+
+    exit(0)
+
 
     infer = IterativeRequirementsSearch(task_description=task_description, lm=prompt_model, judge_lm=LM_DICT["gpt-4o-mini"])
     requirements = infer(examples_a=trainsets[0], examples_b=trainsets[1], prompt=task_program.prompt)
@@ -554,21 +749,3 @@ if __name__ == "__main__":
 
 
     exit(0)
-    
-    extract = use_lm(prompt_model)(dspy.Predict(ExtractRequirementsFromPrompt))
-    existing_requirements = extract(prompt=task_program.prompt).requirements
-    # infer = InferRequirementsFromCompareData(task_description=task_description, lm=prompt_model, judge_lm=prompt_model)
-    # summary = infer(trainset[:20], existing_requirements=existing_requirements)
-    # dspy.inspect_history(n=1)
-
-    existing_requirements += [
-        "The output should use structured sections with headings to organize the explanation.",
-        "The output should not explain import statements.",
-        "The output should include a walkthrough example.",
-        "The output should interleave explanations with code snippets.",
-        "The output should avoid line-by-line explanations of code.",
-    ]
-
-    infer = InferRequirementsFromTask(task_description=task_description, lm=prompt_model)
-    requirements = infer(existing_requirements=existing_requirements, n=20)
-    dspy.inspect_history(n=1)
