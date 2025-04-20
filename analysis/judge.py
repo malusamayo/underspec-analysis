@@ -2,6 +2,7 @@ import numpy as np
 import copy
 import dspy
 from .utils import use_lm, batch_inference, run_model, find_nearest_requirement
+from .load_data import load_data
 from typing import List, Any
 from pydantic import BaseModel
 
@@ -13,14 +14,46 @@ class EvalResult(BaseModel):
     is_applicable: bool
     meets_requirement: bool
 
+class DetermineEvalType(dspy.Signature):
+    """You are a reviewer who is determining whether a requirement can be evaluated with a Python program or requires an LLM-based evaluation.
+    
+Given a task description, examples, and a requirement, determine if the requirement can be evaluated with a Python program or requires an LLM-based evaluation.
+
+Requirements that can be evaluated with Python programs typically involve:
+- Counting words, characters
+- Measuring numerical values or thresholds
+
+Requirements that require LLM-based evaluation typically involve:
+- Fuzzy matching
+- Subjective judgments
+- Semantic understanding
+- Complex reasoning
+- Contextual appropriateness
+- Quality assessments"""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
+    requirement: str = dspy.InputField(desc="The requirement to evaluate")
+    can_evaluate_with_python: bool = dspy.OutputField(desc="Whether the requirement can be evaluated with a Python program")
+
+
 class GenerateEvaluationPlan(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given requirement. Given a task description, examples, and requirement, draft a step-by-step evaluation plan for the requirement. 
 
 Follow the guideline below:
 - The evaluation plan should be a step-by-step process to evaluate if the requirement is met.
 - The evaluation plan should be concise and clear, and lead to a final judgment on whether the model output meets the requirement. 
-- When requirements are conditional (e.g., indicated by "if applicable"), the evaluation plan should include a step to check if the requirement is applicable to an example input.
-- The evaluation plan should only include the steps to evaluate the requirement, and not include any additional feedback or suggestions, or steps to evaluate other related requirements."""
+- When requirements are conditional (e.g., indicated by "if applicable"), the evaluation plan should include a first step to check if the requirement is applicable to an example input.
+- The evaluation plan should only include the steps to evaluate the requirement, and not include any additional feedback or suggestions, or steps to evaluate other related requirements.
+
+Examples
+---
+Requirement: The explanation should provide examples of how to instantiate and use key classes, if applicable.
+Evaluation Plan:
+1. Identify the key classes in the given code snippet by examining the code structure and class definitions. If there are no key classes, this requirement is not applicable.
+2. Check that the explanation clearly highlights which classes are considered \"key\" for this snippet (for example, any classes that define core functionality or are central to the code's purpose).
+3. Verify that the explanation includes concrete examples showing how to instantiate the identified key classes.
+4. Finally, assess whether the explanation meets the requirement by providing sufficient instantiation and usage examples that a user could follow."""
     
     task_description: str = dspy.InputField(desc="Description of the task")
     examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
@@ -98,27 +131,6 @@ Then, compare the two model outputs based on how many requirements each output s
     reasoning: str = dspy.OutputField(desc="The reasoning for the comparison")
     better_output: str = dspy.OutputField(desc="The model output that better satisfies the guideline, either 'A' or 'B', or 'tie' if they are equal")
 
-class DetermineEvalType(dspy.Signature):
-    """You are a reviewer who is determining whether a requirement can be evaluated with a Python program or requires an LLM-based evaluation.
-    
-Given a task description, examples, and a requirement, determine if the requirement can be evaluated with a Python program or requires an LLM-based evaluation.
-Requirements that can be evaluated with Python programs typically involve:
-- Counting words, characters, or specific elements
-- Measuring numerical values or thresholds
-
-Requirements that require LLM-based evaluation typically involve:
-- Subjective judgments
-- Semantic understanding
-- Complex reasoning
-- Contextual appropriateness
-- Quality assessments"""
-
-    task_description: str = dspy.InputField(desc="Description of the task")
-    examples: List[dict] = dspy.InputField(desc="Sample examples for evaluation")
-    requirement: str = dspy.InputField(desc="The requirement to evaluate")
-    can_evaluate_with_python: bool = dspy.OutputField(desc="Whether the requirement can be evaluated with a Python program")
-
-
 class EvalGenerator(dspy.Module):
     
     def __init__(self, task_description, lm, judge_lm, max_workers=32):
@@ -148,39 +160,37 @@ class EvalGenerator(dspy.Module):
         """
         
         # Determine the evaluation type
-        eval_type = self.determine_eval_type(
-            task_description=self.task_description,
-            examples=examples,
-            requirement=requirement
-        )
-        
-        # Generate the appropriate evaluation method
-        if eval_type.can_evaluate_with_python:
-            # Generate a Python evaluation function
-            eval_func = self.generate_eval_func(
+        if "evaluation_type" in requirement:
+            # If the evaluation type is already specified, use it
+            eval_type = requirement["evaluation_type"]
+        else:
+            eval_type = "python" if self.determine_eval_type(
                 task_description=self.task_description,
                 examples=examples,
-                requirement=requirement
-            )
-            
-            return {
-                "requirement": requirement,
-                "evaluation_type": "python",
-                "evaluation_plan": eval_func.evaluation_function
-            }
-        else:
+                requirement=requirement["requirement"]
+            ).can_evaluate_with_python else "llm"
+        
+        # Generate the appropriate evaluation method
+        if eval_type == "llm":
             # Generate an LLM-based evaluation plan
             eval_plan = self.generate_eval_plan(
                 task_description=self.task_description,
                 examples=examples,
-                requirement=requirement
-            )
+                requirement=requirement["requirement"]
+            ).evaluation_plan
+        else:
+            # Generate a Python evaluation function
+            eval_plan = self.generate_eval_func(
+                task_description=self.task_description,
+                examples=examples,
+                requirement=requirement["requirement"]
+            ).evaluation_function
             
-            return {
-                "requirement": requirement,
-                "evaluation_type": "llm",
-                "evaluation_plan": eval_plan.evaluation_plan
-            }
+        return {
+            "requirement": requirement["requirement"],
+            "evaluation_type": eval_type,
+            "evaluation_plan": eval_plan
+        }
     
     def forward(self, examples, requirements):
         """Generate evaluation plans or functions for a list of requirements.
