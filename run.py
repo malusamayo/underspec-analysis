@@ -7,28 +7,15 @@ import copy
 import dspy
 import litellm
 import mlflow
-from analysis.load_data import prepare_data
+from analysis.load_data import prepare_data, load_data
 from analysis.utils import run_model, LM_DICT
 
-def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset, n_samples=5, requirements=None, judge=None):
+def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset, n_samples=1, requirements=None, judge=None):
     if not os.path.exists(f"data/results/{task}"):
         os.makedirs(f"data/results/{task}")
 
-    if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_valset.json"):
-        print("Running model...")
-        trainset_2 = run_model(task_program, trainset, max_workers=32)
-        valset_2 = run_model(task_program, valset, max_workers=32)
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "w") as f:
-            json.dump([example.toDict() for example in trainset_2], f)
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "w") as f:
-            json.dump([example.toDict() for example in valset_2], f)
-    else:
-        print("Loading data from cache...")
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "r") as f:
-            trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "r") as f:
-            valset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
-
+    trainset_2, valset_2 = load_data(task, model_name, prompt_name, task_program, trainset, valset)
+    
     if requirements is None:
         return
     

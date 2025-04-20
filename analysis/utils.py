@@ -16,24 +16,31 @@ from dotenv import load_dotenv
 load_dotenv(override=True)
 
 LM_DICT = {
-    "gpt-4o": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0),
-    "gpt-4o-2024-11-20": dspy.LM('openai/gpt-4o-2024-11-20', temperature=1.0),
-    "gpt-4o-2024-05-13": dspy.LM('openai/gpt-4o-2024-05-13', temperature=1.0),
-    "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0),
+    "gpt-4o": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, max_tokens=4096),
+    "gpt-4o-2024-05-13": dspy.LM('openai/gpt-4o-2024-05-13', temperature=1.0, max_tokens=4096),
+    "gpt-4o-2024-08-06": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, max_tokens=4096),
+    "gpt-4o-2024-11-20": dspy.LM('openai/gpt-4o-2024-11-20', temperature=1.0, max_tokens=4096),
+    "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0, max_tokens=4096),
     "4o-eval": dspy.LM('openai/gpt-4o-2024-08-06', temperature=0, max_tokens=16384),
     "4o-mini-eval": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=0, max_tokens=16384),
+    "4.1-mini-eval": dspy.LM('openai/gpt-4.1-mini', temperature=0, max_tokens=16384),
     "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=10000),
-    "gemini-1.5-pro": dspy.LM('openai/gemini-1.5-pro-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "gemini-1.5-flash": dspy.LM('openai/gemini-1.5-flash-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "gemini-2.5-pro": dspy.LM('vertex_ai/gemini-2.5-pro-preview-03-25', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS"), 'r')))),
-    "claude-3.5-sonnet": dspy.LM('openai/claude-3-5-sonnet-20241022', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "llama3-2-11b-instruct": dspy.LM('openai/llama3-2-11b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "llama3-2-90b-instruct": dspy.LM('openai/llama3-2-90b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
-    "mixtral-8x7b": dspy.LM('bedrock/mistral.mixtral-8x7b-instruct-v0:1', temperature=1.0),
-    "qwen2.5-7b": dspy.LM('hosted_vllm/Qwen/Qwen2.5-7B-Instruct', temperature=0.7, api_base=os.environ.get("BABEL_API_BASE")),
-    "ministral-8b": dspy.LM('hosted_vllm/mistralai/Ministral-8B-Instruct-2410', temperature=0, api_base=os.environ.get("BABEL_API_BASE")),
-    "llama3-8b": dspy.LM('hosted_vllm/meta-llama/Meta-Llama-3-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
-    "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE")),
+    "gemini-1.5-pro": dspy.LM('openai/gemini-1.5-pro-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY"), max_tokens=4096),
+    "gemini-1.5-flash": dspy.LM('openai/gemini-1.5-flash-002', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY"), max_tokens=4096),
+    "gemini-2.5-pro": dspy.LM('vertex_ai/gemini-2.5-pro-preview-03-25', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS"), 'r'))), max_tokens=4096),
+    "claude-3.5-sonnet": dspy.LM('openai/claude-3-5-sonnet-20241022', temperature=1.0, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY"), max_tokens=4096),
+    "llama3-2-11b-instruct": dspy.LM('openai/llama3-2-11b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY"), max_tokens=4096),
+    # "llama3-2-90b-instruct": dspy.LM('openai/llama3-2-90b-instruct', temperature=0.6, api_base=os.environ.get("CMU_API_BASE"), api_key=os.environ.get("LITELLM_API_KEY")),
+    "mixtral-8x7b": dspy.LM('bedrock/mistral.mixtral-8x7b-instruct-v0:1', temperature=1.0, max_tokens=4096),
+    "qwen2.5-7b": dspy.LM('hosted_vllm/Qwen/Qwen2.5-7B-Instruct', temperature=0.7, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
+    "ministral-8b": dspy.LM('hosted_vllm/mistralai/Ministral-8B-Instruct-2410', temperature=0, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
+    "llama3-8b": dspy.LM('hosted_vllm/meta-llama/Meta-Llama-3-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
+    "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
+    "llama3.2-11b": dspy.LM('hosted_vllm/meta-llama/Llama-3.2-11B-Vision-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
+    "llama3-70b": dspy.LM('bedrock/meta.llama3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
+    "llama3.1-70b": dspy.LM('bedrock/us.meta.llama3-1-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
+    "llama3-2-90b-instruct": dspy.LM('bedrock/us.meta.llama3-2-90b-instruct-v1:0', temperature=0.6, max_tokens=4096),
+    "llama3.3-70b": dspy.LM('bedrock/us.meta.llama3-3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
 }
 
 
@@ -146,7 +153,7 @@ def cluster_requirements(requirements, existing_requirements=[], num_clusters=40
     # requirement_df = requirement_df[~requirement_df['cluster'].isin(clusters_to_remove)]
 
     requirement_df = remove_duplicates(requirement_df, existing_requirements_df)
-    requirement_df = requirement_df[~requirement_df['requirements'].isin(existing_requirements)]
+    # requirement_df = requirement_df[~requirement_df['requirements'].isin(existing_requirements)]
 
     # print the clusters
     # for i in range(num_clusters):
@@ -164,6 +171,4 @@ def cluster_requirements(requirements, existing_requirements=[], num_clusters=40
 def requirements_to_str(requirements):
     if len(requirements) == 0:
         return ""
-    # if len(requirements) == 1:
-    #     return f" {requirements[0]}"
-    return "\n\nFollow the following requirements:\n" + "\n".join([f"- {req}" for req in requirements])
+    return "\n\nFollow the guideline below:\n" + "\n".join([f"- {req}" for req in requirements])
