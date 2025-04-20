@@ -1,8 +1,11 @@
 import pandas as pd
 import dspy
 import json
+import os
 import litellm
 from functools import partial
+from copy import deepcopy
+from analysis.utils import run_model
 
 class TaskProgram:
     def __init__(self, prompt, input_key, lm, n=1):
@@ -24,7 +27,13 @@ class TaskProgram:
         )
         output = response.choices[0].message.content
         outputs = [response.choices[i].message.content for i in range(len(response.choices))]
-        return dspy.Example(**{self.input_key: input}, output=output, outputs=outputs)    
+        return dspy.Example(**{self.input_key: input}, output=output, outputs=outputs)
+    
+    def deepcopy(self):
+        return deepcopy(self)
+
+    def predictors(self):
+        return [self]
 
 def prepare_dataset(data_path, input_key, data_size=100):
 
@@ -347,3 +356,23 @@ def prepare_data(
         prompts = {}
 
     return task_description, TaskProgram, trainset, valset, requirements, prompts
+
+
+def load_data(task, model_name, prompt_name, task_program, trainset, valset):
+    if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json") or \
+        not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_valset.json"):
+        print("Running model...")
+        trainset_2 = run_model(task_program, trainset, max_workers=32)
+        valset_2 = run_model(task_program, valset, max_workers=32)
+        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "w") as f:
+            json.dump([example.toDict() for example in trainset_2], f)
+        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "w") as f:
+            json.dump([example.toDict() for example in valset_2], f)
+    else:
+        print("Loading data from cache...")
+        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "r") as f:
+            trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "r") as f:
+            valset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+
+    return trainset_2, valset_2
