@@ -51,6 +51,15 @@ Given a task description, model input, model output, a requirement and its step-
     is_applicable: bool = dspy.OutputField(desc="Whether the requirement is applicable to the input example, True or False")
     meets_requirement: bool = dspy.OutputField(desc="Whether the model output meets the requirement, True or False")
 
+class AggregateEvalResult(dspy.Signature):
+    """Consolidate the evaluation results for all requirements into a single feedback. Focus on the requirements that were not satisfied and provide suggestions for improvement."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    model_input: str = dspy.InputField(desc="The model input")
+    model_output: str = dspy.InputField(desc="The model output")
+    eval_results: List[EvalResult] = dspy.InputField(desc="The evaluation results for each requirement")
+    feedback: str = dspy.OutputField(desc="The consolidated feedback based on the evaluation results")
+
 class EvaluateGuideline(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given guideline.
 Given a task description, model input, model output, and guideline, evaluate the model output using the requirements in the guideline one by one. 
@@ -205,6 +214,7 @@ class LLMJudge(dspy.Module):
         self.evaluator = use_lm(self.lm)(dspy.Predict(EvaluateRequirement))
         self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(EvaluateGuideline))
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
+        self.feedback_aggregator = use_lm(self.lm)(dspy.Predict(AggregateEvalResult))
 
     def evaluate_requirement(self, example, requirement):
         if requirement["evaluation_type"] == "python":
@@ -323,6 +333,23 @@ class LLMJudge(dspy.Module):
                 }
 
         return examples
+    
+    def aggregate_feedback(self, example, requirements):
+        eval_results = [
+            EvalResult(
+                requirement=requirement["requirement"],
+                evaluation_plan=requirement["evaluation_plan"],
+                plan_execution=example.requirements[requirement["requirement"]]["plan_execution"],
+                is_applicable=example.requirements[requirement["requirement"]]["is_applicable"],
+                meets_requirement=example.requirements[requirement["requirement"]]["meets_requirement"]
+            ) for requirement in requirements
+        ]
+        return self.feedback_aggregator(
+            task_description=self.task_description,
+            model_input=example.inputs().toDict(),
+            model_output=example.output,
+            eval_results=eval_results
+        ).feedback
 
     def calculate_score(self, evaluate_examples, requirement):
         applicable_examples = [example for example in evaluate_examples if example.requirements[requirement]["is_applicable"]]
@@ -332,6 +359,14 @@ class LLMJudge(dspy.Module):
         else:
             score = sum([example.requirements[requirement]['meets_requirement'] for example in applicable_examples]) / len(applicable_examples)
         return applicable_ratio, score
+    
+    def calculate_scores_aggregate(self, evaluate_examples, requirements):
+        scores = {}
+        for requirement in requirements:
+            requirement = requirement["requirement"]
+            _, pass_rate = self.calculate_score(evaluate_examples, requirement)
+            scores[requirement] = pass_rate
+        return np.mean(list(scores.values()))
 
     def evaluate(self, examples, requirements, program=None, aggregate=False):
         examples = copy.deepcopy(examples)
