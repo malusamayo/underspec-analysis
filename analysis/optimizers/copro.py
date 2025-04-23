@@ -80,11 +80,7 @@ class COPRO(Teleprompter):
 
     def _check_candidates_equal(self, candidate1, candidate2):
         for p1, p2 in zip(candidate1["program"].predictors(), candidate2["program"].predictors()):
-            if self._get_signature(p1).instructions != self._get_signature(p2).instructions:
-                return False
-            *_, p1_last_field = self._get_signature(p1).fields.values()
-            *_, p2_last_field = self._get_signature(p2).fields.values()
-            if p1_last_field != p2_last_field:
+            if p1.prompt != p2.prompt:
                 return False
         return True
 
@@ -111,8 +107,8 @@ class COPRO(Teleprompter):
     def _print_signature(self, predictor):
         signature = self._get_signature(predictor)
 
-        print(f"i: {signature.instructions}")
-        print(f"p: {list(signature.fields.values())[-1].json_schema_extra['prefix']}")
+        logger.info(f"i: {signature.instructions}")
+        logger.info(f"p: {list(signature.fields.values())[-1].json_schema_extra['prefix']}")
 
     def _get_signature(self, predictor):
         assert hasattr(predictor, "signature")
@@ -122,7 +118,7 @@ class COPRO(Teleprompter):
         assert hasattr(predictor, "signature")
         predictor.signature = updated_signature
 
-    def compile(self, student, *, trainset):
+    def compile(self, student, trainset):
         """
         optimizes `signature` of `student` program - note that it may be zero-shot or already pre-optimized (demos already chosen - `demos != []`)
 
@@ -166,11 +162,12 @@ class COPRO(Teleprompter):
             )(basic_instruction=basic_instruction)
         # Add in our initial prompt as a candidate as well
         instruct.completions.proposed_instruction.append(basic_instruction)
+        instruct.completions.proposed_prefix_for_output_field.append("")
         candidates[id(module)] = instruct.completions
         evaluated_candidates[id(module)] = {}
 
         if self.prompt_model:
-            print(f"{self.prompt_model.inspect_history(n=1)}")
+            logger.info(f"{self.prompt_model.inspect_history(n=1)}")
 
         latest_candidates = candidates
         all_candidates = candidates
@@ -206,11 +203,11 @@ class COPRO(Teleprompter):
                     )
                     score, _ = self.evaluate(module_clone, devset=trainset)
                     if self.prompt_model:
-                        print(f"prompt_model.inspect_history(n=1) {self.prompt_model.inspect_history(n=1)}")
+                        logger.info(f"prompt_model.inspect_history(n=1) {self.prompt_model.inspect_history(n=1)}")
                     total_calls += 1
 
                     replace_entry = True
-                    print(f"(instruction, prefix) {(instruction, prefix)}")
+                    logger.info(f"(instruction, prefix) {(instruction, prefix)}")
                     if (instruction, prefix) in evaluated_candidates[id(p_old)]:
                         if evaluated_candidates[id(p_old)][(instruction, prefix)]["score"] >= score:
                             replace_entry = False
@@ -240,11 +237,11 @@ class COPRO(Teleprompter):
                 best_candidate = max(evaluated_candidates[id(p_old)].values(), key=lambda candidate: candidate["score"])
                 p_new.prompt = best_candidate["instruction"]
 
-                print(
+                logger.info(
                     f"Updating Predictor {id(p_old)} to:\ni: {best_candidate['instruction']}\n"
                     f"p: {best_candidate['prefix']}",
                 )
-                print("Full predictor with update: ")
+                logger.info("Full predictor with update: ")
 
             if d == self.depth - 1:
                 break
@@ -290,7 +287,7 @@ class COPRO(Teleprompter):
                     )(attempted_instructions=attempts)
 
                 if self.prompt_model:
-                    print(
+                    logger.info(
                         f"(self.prompt_model.inspect_history(n=1)) {self.prompt_model.inspect_history(n=1)}"
                     )
                 # Get candidates for each predictor
@@ -301,7 +298,7 @@ class COPRO(Teleprompter):
                 )
 
             if self.prompt_model:
-                print(f"{self.prompt_model.inspect_history(n=1)}")
+                logger.info(f"{self.prompt_model.inspect_history(n=1)}")
             latest_candidates = new_candidates
 
         candidates = []
