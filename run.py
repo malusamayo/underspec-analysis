@@ -14,7 +14,7 @@ def run_evaluation(task, model_name, prompt_name, task_program, trainset, valset
     if not os.path.exists(f"data/results/{task}"):
         os.makedirs(f"data/results/{task}")
 
-    trainset_2, valset_2 = load_data(task, model_name, prompt_name, task_program, trainset, valset)
+    valset_2 = load_data(task, model_name, prompt_name, task_program, {"valset": valset})["valset"]
     
     if requirements is None:
         return

@@ -37,7 +37,7 @@ LM_DICT = {
     "llama3-8b": dspy.LM('hosted_vllm/meta-llama/Meta-Llama-3-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
     "llama3.1-8b": dspy.LM('hosted_vllm/meta-llama/Llama-3.1-8B-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
     "llama3.2-11b": dspy.LM('hosted_vllm/meta-llama/Llama-3.2-11B-Vision-Instruct', temperature=0.6, api_base=os.environ.get("BABEL_API_BASE"), max_tokens=4096),
-    "llama3-70b": dspy.LM('bedrock/meta.llama3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
+    "llama3-70b": dspy.LM('bedrock/meta.llama3-70b-instruct-v1:0', temperature=0.6, max_tokens=2048),
     "llama3.1-70b": dspy.LM('bedrock/us.meta.llama3-1-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3-2-90b-instruct": dspy.LM('bedrock/us.meta.llama3-2-90b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3.3-70b": dspy.LM('bedrock/us.meta.llama3-3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
@@ -56,7 +56,7 @@ def use_lm(lm, n=1):
                     with dspy.context(lm=lm):
                         return program(*args, **kwargs)
                 except litellm.APIError as e:
-                    if "502 Bad Gateway" in str(e) and attempt < max_retries - 1:
+                    if attempt < max_retries - 1:
                         print(f"API Error (attempt {attempt + 1}/{max_retries}): {str(e)}")
                         print(f"Retrying in {delay} seconds...")
                         time.sleep(delay)

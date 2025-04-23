@@ -340,8 +340,9 @@ def prepare_data(
         case _:
             task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = "", None, [], [], "", ""
     
-    if configs and configs.get("requirement"):
-        requirement_path = configs.get("requirement")
+    if configs:
+        requirement_path = configs.get("requirement_path") or requirement_path
+        prompt_path = configs.get("prompt_path") or prompt_path
 
     if requirement_path:
         with open(requirement_path, "r") as f:
@@ -358,21 +359,16 @@ def prepare_data(
     return task_description, TaskProgram, trainset, valset, requirements, prompts
 
 
-def load_data(task, model_name, prompt_name, task_program, trainset, valset):
-    if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json") or \
-        not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_valset.json"):
-        print("Running model...")
-        trainset_2 = run_model(task_program, trainset, max_workers=32)
-        valset_2 = run_model(task_program, valset, max_workers=32)
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "w") as f:
-            json.dump([example.toDict() for example in trainset_2], f)
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "w") as f:
-            json.dump([example.toDict() for example in valset_2], f)
-    else:
-        print("Loading data from cache...")
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_trainset.json", "r") as f:
-            trainset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
-        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset.json", "r") as f:
-            valset_2 = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
-
-    return trainset_2, valset_2
+def load_data(task, model_name, prompt_name, task_program, datasets):
+    loaded_datasets = {}
+    for dataset_name, dataset in datasets.items():
+        if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_{dataset_name}.json"):
+            print(f"Running model on {dataset_name} split...")
+            loaded_datasets[dataset_name] = run_model(task_program, dataset, max_workers=32)
+            with open(f"data/results/{task}/{model_name}_{prompt_name}_{dataset_name}.json", "w") as f:
+                json.dump([example.toDict() for example in loaded_datasets[dataset_name]], f)
+        else:
+            print(f"Loading {dataset_name} data from cache...")
+            with open(f"data/results/{task}/{model_name}_{prompt_name}_{dataset_name}.json", "r") as f:
+                loaded_datasets[dataset_name] = [dspy.Example(**row).with_inputs(task_program.input_key) for row in json.load(f)]
+    return loaded_datasets

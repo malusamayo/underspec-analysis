@@ -512,8 +512,8 @@ class ElicitRequirements(dspy.Module):
         filtered_requirements_dicts = []
         for req, result in zip(filtered_requirements, results):
             req_dict = copy.deepcopy(requirements_map[req])
-            req_dict['risk_analysis'] = result.risk_analysis
             req_dict['risk_level'] = result.risk_level.lower()
+            req_dict['risk_analysis'] = result.risk_analysis
             filtered_requirements_dicts.append(req_dict)
             
 
