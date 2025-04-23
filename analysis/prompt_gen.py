@@ -2,6 +2,7 @@ import dspy
 from typing import List, Dict, Any
 import difflib
 import json
+import random
 from .utils import use_lm
 from .load_data import prepare_data
 from .utils import requirements_to_str
@@ -75,31 +76,55 @@ def remove_requirements(lm, prompt, requirements):
     return prompts
 
 
-def generate_fixes(prompt, requirements):
+def generate_fixes(prompt, requirements, select_indices):
     prompts = {}
-    select_indices = [
-        [i] for i, r in enumerate(requirements)
-    ] + [
-        [i for i, _ in enumerate(requirements)]
-    ]
     for selected_index in select_indices:
         requirements_selected = [requirements[i] for i in selected_index]
         prompts["fixed_" + "+".join([str(i) for i in selected_index])] = prompt + requirements_to_str(requirements_selected)
     return prompts
+
+def generate_pbdesign(requirements):
+    from pyDOE2 import pbdesign
+    design = pbdesign(len(requirements))
+    select_indices = [
+        [i for i, _ in enumerate(requirements) if r[i] == 1]
+        for r in design
+    ]
+    return select_indices
+
+def generate_cyclic_designs(requirements, k):
+    """Generate cyclic designs for the given requirements."""
+    
+    L = len(requirements)
+    select_indices = [
+        [j%L for j in range(i, i+k)]
+        for i in range(L)
+    ]
+    return select_indices
 
 
 if __name__ == "__main__":
     lm = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, cache=False)
 
     task = "commitpack"
+    task = "trip"
+    task = "product"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
     prompt = prompts["original"]
-    requirements_base = requirements["known"]
-    requirements_unseen = requirements["unseen"]
 
-    d = generate_fixes(prompt, requirements_unseen)
+
+    # shuffle the requirements
+    # random.seed(42)
+    # random.shuffle(requirements)
+    # print(json.dumps(requirements, indent=4))
+
+    requirements = [requirement["requirement"] for requirement in requirements]
+    
+    select_indices = generate_cyclic_designs(requirements, 10)
+
+    d = generate_fixes(task_description, requirements, select_indices)
     print(json.dumps(d, indent=4))
 
     # d = remove_requirements(lm, prompt, requirements_base)
