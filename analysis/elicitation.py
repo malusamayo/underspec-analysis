@@ -686,8 +686,7 @@ if __name__ == "__main__":
     for model_name in model_names:
         task_model = LM_DICT[model_name]
         task_program = TaskProgram(lm=task_model, n=1)
-        trainset, _ = load_data(task=task, model_name=model_name, prompt_name=prompt_name,
-                                task_program=task_program, trainset=trainset, valset=[])
+        trainset = load_data(task, model_name, prompt_name, task_program, {"trainset": trainset})["trainset"]
         trainsets.append(trainset)
     
     # merge trainsets output into outputs

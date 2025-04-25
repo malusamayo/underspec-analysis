@@ -340,9 +340,11 @@ def prepare_data(
         case _:
             task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = "", None, [], [], "", ""
     
+    prompt_paths = []
     if configs:
         requirement_path = configs.get("requirement_path") or requirement_path
         prompt_path = configs.get("prompt_path") or prompt_path
+        prompt_paths = configs.get("prompt_paths") or []
 
     if requirement_path:
         with open(requirement_path, "r") as f:
@@ -350,7 +352,12 @@ def prepare_data(
     else:
         requirements = {}
 
-    if prompt_path:
+    if prompt_paths:
+        prompts = {}
+        for prompt_path in prompt_paths:
+            with open(prompt_path, "r") as f:
+                prompts.update(json.load(f))
+    elif prompt_path:
         with open(prompt_path, "r") as f:
             prompts = json.load(f)
     else:
