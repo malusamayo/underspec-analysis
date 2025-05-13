@@ -299,6 +299,15 @@ class SuggestDesignDecisions(dspy.Signature):
     n: int = dspy.InputField(desc="Number of design chocies to suggest")
     design_choices: List[str] = dspy.OutputField(desc="A list of suggested design chocies")
 
+class ClassifyRequirement(dspy.Signature):
+    """Classify the requirements into one of the following categories: content, style, and format.
+
+- Content constraints refer to explicit impositions of specific conditions that shape the depth or scope of the response content.
+- Style Constraints control the stylistic variations of output to accomplish specific stylistic goals, such as tone, sentiment, formality, and empath.
+- Format Constraints refer to stipulations governing the structural, linguistic, or output presentation of generated content."""
+    requirement = dspy.InputField(desc="The requirement")
+    category: str = dspy.OutputField(desc="Category of the requirement, content, style, or format")
+
 class InferRequirementsFromTask(dspy.Module):
 
     def __init__(self, task_description, lm):
@@ -671,8 +680,8 @@ if __name__ == "__main__":
         print(experiment.experiment_id)
 
     task = "commitpack"
-    task = "product"
-    task = "trip"
+    # task = "product"
+    # task = "trip"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )

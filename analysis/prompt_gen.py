@@ -107,8 +107,8 @@ if __name__ == "__main__":
     lm = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, cache=False)
 
     task = "commitpack"
-    task = "trip"
-    task = "product"
+    # task = "trip"
+    # task = "product"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
@@ -119,10 +119,12 @@ if __name__ == "__main__":
     # random.seed(42)
     # random.shuffle(requirements)
     # print(json.dumps(requirements, indent=4))
+    # exit(0)
 
     requirements = [requirement["requirement"] for requirement in requirements]
     
-    select_indices = generate_cyclic_designs(requirements, 10)
+    select_indices = generate_cyclic_designs(requirements, 20)
+    # select_indices = generate_pbdesign(requirements)
 
     d = generate_fixes(task_description, requirements, select_indices)
     print(json.dumps(d, indent=4))

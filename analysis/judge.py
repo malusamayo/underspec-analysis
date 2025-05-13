@@ -395,4 +395,75 @@ class LLMJudge(dspy.Module):
         print(f"Average pass rate: {sum(pass_rates) / len(pass_rates)}")
         return evaluate_examples
 
+if __name__ == "__main__":
+    
+    import os
+    import json
+    import argparse
+    from .load_data import prepare_data
+    from .utils import LM_DICT
 
+    parser = argparse.ArgumentParser()
+    parser.add_argument("--experiment", type=str, help="The name of the experiment to log to.")
+    args = parser.parse_args()
+
+    task = "commitpack"
+    # task = "product"
+    # task = "trip"
+    task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
+        task_name=task,
+    )
+
+    # Generate evaluation plans for requirements
+    eval_generator = EvalGenerator(task_description, LM_DICT["o3-mini"], LM_DICT["gpt-4o"], max_workers=32)
+    results = eval_generator([example.toDict() for example in trainset[:3]], requirements)
+
+    for result, requirement in zip(results, requirements):
+        requirement["evaluation_type"] = result["evaluation_type"]
+        requirement["evaluation_plan"] = result["evaluation_plan"]
+        
+    print(json.dumps(requirements, indent=4))
+
+    # Run evaluation
+    model_names = [
+        "gpt-4o-mini", 
+        # "gemini-1.5-flash", 
+        "llama3-2-11b-instruct",
+    ]
+    prompt_names = [
+        "original",
+        # "original_optimized",
+        # "structured",
+        # "original_selected"
+        # "structured-minimal",
+        # "structured-reversed",
+    ]
+
+    datasets = []
+    for model_name in model_names:
+        for prompt_name in prompt_names:
+            task_model = LM_DICT[model_name]
+            task_program = TaskProgram(lm=task_model, n=1)
+            task_program.prompt = prompts[prompt_name]
+            trainset = load_data(task, model_name, prompt_name, task_program, {"trainset": trainset})["trainset"]
+            datasets.append(trainset)
+
+    judge = LLMJudge(task_description, LM_DICT["4.1-mini-eval"])
+
+    L = len(model_names)
+    N = 30
+    # datasets = datasets[:1]
+    datasets = [dataset[:N] for dataset in datasets]
+    evaluated_datasets = []
+    for i, dataset in enumerate(datasets):
+        evaluated_dataset = judge.evaluate(dataset, requirements=requirements)
+        model_name = model_names[i % L]
+        prompt_name = prompt_names[i // L]
+        for example in evaluated_dataset:
+            if not hasattr(example, "requirements_dict"):
+                example.requirements_dict = {}
+            example.requirements_dict["0"] = copy.deepcopy(example.requirements)
+            example.requirements = {}
+        with open(f"data/results/{task}/{model_name}_{prompt_name}_valset_evaluated.json", "w") as f:
+            json.dump([example.toDict() for example in evaluated_dataset], f)
+        # evaluated_datasets.append(evaluated_dataset)
