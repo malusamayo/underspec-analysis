@@ -7,3 +7,4 @@ wine-vertex-ai.json
 poetry.lock
 slurm-*.out
 *.pdf
+.ipynb_checkpoints
