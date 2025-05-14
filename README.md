@@ -5,7 +5,7 @@ This is a repository for analyzing the impacts of under-specification on LLM beh
 We share all experiment configurations in `data/configs`, all prompts in `data/prompts`, all curated requirements in `data/requirements`, and the evaluation results [here](https://figshare.com/s/38acdc02f9cae8c39198).
 
 ## Steps to reproduce the analysis
-Download evaluation data from [here](https://figshare.com/s/38acdc02f9cae8c39198). Create a three repositores `data/results/commitpack`, `data/results/trip`, `data/results/product`, and uncompress the evaluation results into each repository.
+Download evaluation data from [here](https://figshare.com/s/38acdc02f9cae8c39198). Create three repositores `data/results/commitpack`, `data/results/trip`, `data/results/product`, and uncompress the evaluation results into each repository.
 
 Run steps in `analysis-reproduction.ipynb`.
 
