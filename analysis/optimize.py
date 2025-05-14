@@ -41,6 +41,10 @@ def gather_results(evaluate_examples, requirements):
     )
     return results
 
+def generic_evaluate(module, devset):
+    evaluate_examples = judge.evaluate_outputs(devset, program=module)
+    score = judge.calculate_scores_aggregate(evaluate_examples)
+    return score, evaluate_examples
 
 def evaluate_requirements(requirements):
     def evaluate(module, devset, gather_feedback=False):
@@ -100,6 +104,14 @@ def construct_optimizer(
     #         num_trials=9,
     #         seed=42
     #     )
+    elif optimizer_name == "copro_baseline":
+        optimizer = COPRO(
+            prompt_model=LM_DICT["gpt-4o"],
+            evaluate=generic_evaluate,
+            breadth=3,
+            depth=3,
+            init_temperature=0.5,
+        )
     elif optimizer_name == "copro":
         optimizer = COPRO(
             prompt_model=LM_DICT["gpt-4o"],
@@ -127,7 +139,7 @@ if __name__ == "__main__":
             "prompt_paths": config["prompt_paths"],
         }
     )
-    model_name = config["model_name"]
+    model_name = config["model_names"][0]
     task_program = TaskProgram(lm=LM_DICT[model_name])
 
     optimizer_names = config["optimizer_names"]
@@ -143,16 +155,13 @@ if __name__ == "__main__":
         k: v for k, v in prompts.items() if key_in_subset(k)
     }
     optimized_prompts = {}
-    for i, (prompt_name, prompt) in list(enumerate(prompts.items()))[3:]:
+    for i, (prompt_name, prompt) in list(enumerate(prompts.items()))[:]:
         for optimizer_name in optimizer_names:
             print(f"Optimizing {prompt_name} with {optimizer_name}...")
             
             local_requirements = gather_relevant_requirements(prompt_name, requirements)
 
             task_program.prompt = prompt
-
-            if optimizer_name == "reqaware+textgrad":
-                task_program.prompt = prompts_copy[f"optimized_{model_name}_reqaware_" + prompt_name]
 
             optimizer = construct_optimizer(
                 optimizer_name=optimizer_name,

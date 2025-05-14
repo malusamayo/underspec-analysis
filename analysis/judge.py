@@ -104,6 +104,18 @@ For each requirement in the guideline, do the evaluation in two steps: First gen
     guideline: List[str] = dspy.InputField(desc="The guideline for evaluation")
     results: List[EvalResult] = dspy.OutputField(desc="The evaluation results for each requirement")
 
+class EvaluateOutput(dspy.Signature):
+    """You are a reviewer who is evaluating whether a model output satisfies the given prompt instruction.
+First, write down your reasoning on how well the model output satisfies the prompt instruction. Make sure to evaluate each requirement in the prompt instruction.
+Then, provide a score from 1 to 10, where 1 means the model output does not satisfy the prompt instruction at all, and 10 means the model output fully satisfies the prompt instruction."""
+
+    task_description: str = dspy.InputField(desc="Description of the task")
+    prompt_instruction: str = dspy.InputField(desc="The prompt used to generate the model output")
+    model_input: str = dspy.InputField(desc="The model input")
+    model_output: str = dspy.InputField(desc="The model output")
+    reasoning: str = dspy.OutputField(desc="The reasoning for the evaluation")
+    score: int = dspy.OutputField(desc="The score for the evaluation, 1-10")
+
 class IdentifyMistakes(dspy.Signature):
     """You are a reviewer who is evaluating whether a model output satisfies the given guideline.
 Given a task description, model input, model output, and guideline, first evaluate the model output using the requirements in the guideline one by one to identify mistakes. For each requirement in the guideline, do the evaluation step-by-step. 
@@ -225,6 +237,7 @@ class LLMJudge(dspy.Module):
         self.aggregate_evaluator = use_lm(self.lm)(dspy.Predict(EvaluateGuideline))
         self.compare_evaluator = use_lm(self.lm)(dspy.Predict(CompareModelOutputsWithGuideline))
         self.feedback_aggregator = use_lm(self.lm)(dspy.Predict(AggregateEvalResult))
+        self.generic_evaluator = use_lm(self.lm)(dspy.Predict(EvaluateOutput))
 
     def evaluate_requirement(self, example, requirement):
         if requirement["evaluation_type"] == "python":
@@ -253,6 +266,29 @@ class LLMJudge(dspy.Module):
                             model_input=example.inputs().toDict(), 
                             model_output=example.output, 
                             guideline=guideline)
+    
+    def evaluate_output(self, example, prompt):
+        return self.generic_evaluator(task_description=self.task_description, 
+                            prompt_instruction=prompt,
+                            model_input=example.inputs().toDict(), 
+                            model_output=example.output)
+
+    def evaluate_outputs(self, examples, program):
+        examples = copy.deepcopy(examples)
+        if program is not None:
+            examples = run_model(program, examples)
+        
+        results = batch_inference(
+            self.evaluate_output,
+            [{"example": example, "prompt": program.prompt} for example in examples],
+            max_workers=self.max_workers
+        )
+        evaluated_examples = []
+        for example, result in zip(examples, results):
+            example.reasoning = result.reasoning
+            example.score = result.score
+            evaluated_examples.append(example)
+        return evaluated_examples
     
     def compare_outputs(self, example_a, example_b, guideline):
         return self.compare_evaluator(task_description=self.task_description, 
@@ -370,8 +406,11 @@ class LLMJudge(dspy.Module):
             score = sum([example.requirements[requirement]['meets_requirement'] for example in applicable_examples]) / len(applicable_examples)
         return applicable_ratio, score
     
-    def calculate_scores_aggregate(self, evaluate_examples, requirements):
+    def calculate_scores_aggregate(self, evaluate_examples, requirements=None):
         scores = {}
+        if requirements is None:
+            scores = [example.score/10 for example in evaluate_examples]
+            return np.mean(scores)
         for requirement in requirements:
             requirement = requirement["requirement"]
             _, pass_rate = self.calculate_score(evaluate_examples, requirement)
