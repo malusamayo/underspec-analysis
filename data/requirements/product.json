@@ -1,0 +1,202 @@
+[
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output must ensure that key product information is easily skimmable.",
+        "risk_level": "medium",
+        "risk_analysis": "Failing to make key product information easily skimmable might result in user frustration, leading to decreased engagement and potential loss of interest in the product. If users cannot quickly grasp the essential features and benefits, they may abandon the content without fully understanding the product's value, resulting in a loss of sales opportunities. However, this is unlikely to result in legal issues or serious harm to users. Therefore, while there is a risk of reduced business performance and user dissatisfaction, the overall impact is limited to operational and user experience considerations.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify the key product information elements for the description, such as product name, features, dimensions, materials, and usage instructions.\n2. Check if the output organizes these details clearly using formatting such as headings, bullet points, or separate paragraphs that facilitate quick skimming.\n3. Verify that the output\u2019s structure allows a reader to quickly locate and understand each critical piece of product information without excessive effort.\n4. Conclude whether the output meets the requirement by ensuring that all key product information is prominently and clearly presented in an easily skimmable format."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must not use Markdown syntax.",
+        "risk_level": "low",
+        "risk_analysis": "The risk associated with failing to ensure that the output does not use Markdown syntax is relatively low. If Markdown is inadvertently used, the primary consequence would likely be the product description displaying formatting errors or not appearing as intended. This might result in minor cosmetic issues or could cause confusion or slight dissatisfaction among users who prefer or expect plain text. However, it would not lead to significant legal, financial, or reputational damage. As such, the overall impact of not meeting this requirement is minimal.",
+        "evaluation_type": "python",
+        "evaluation_plan": "def evaluation_function(task_description, model_input, model_output):\n    \"\"\"\n    This function checks whether the model_output satisfies the requirement:\n    \"The output must not use Markdown syntax.\"\n    \n    It returns True if no markdown formatting is detected in the model_output, and False otherwise.\n    \n    We check for common markdown tokens such as:\n      - Code fences (```).\n      - Inline code delimiters using backticks (`).\n      - Markdown headers (lines beginning with one or more '#' followed by a space).\n    \"\"\"\n    import re\n    \n    # Check for markdown code fences (```)\n    if \"```\" in model_output:\n        return False\n\n    # Check for inline code enclosed in backticks\n    if re.search(r'(?<!\\\\)`[^`]+(?<!\\\\)`', model_output):\n        return False\n\n    # Check for markdown headers (lines starting with one or more '#' followed by a space)\n    for line in model_output.splitlines():\n        if re.match(r'\\s*#+\\s', line):\n            return False\n\n    # You could add more checks here for other markdown syntaxes as needed.\n    return True"
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output should clearly mention any customer support or warranty information included with the product.",
+        "risk_level": "medium",
+        "risk_analysis": "Not including customer support or warranty information in the product description can lead to user frustration and dissatisfaction as customers may feel uncertain about post-purchase support or assurance on product reliability. This omission might increase customer service inquiries and negatively affect the brand's trust and reputation. However, the absence of this information is unlikely to result in legal issues or severe user harm unless there are specific laws that mandate the disclosure of such information, which is uncommon.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Check if the input contains details about customer support or warranty information. If not, this requirement is not applicable.\n2. Search the output text for keywords or phrases such as \"warranty\", \"refund\", \"replacement\", \"guaranteed\", \"customer support\", or similar indications of service commitment.\n3. Verify that any detected customer support or warranty details are clearly stated and provide sufficient clarity.\n4. If such information is explicitly provided in the output, conclude that the requirement is met; otherwise, note that the output fails to meet the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must be at least 500 characters long.",
+        "risk_level": "low",
+        "risk_analysis": "The requirement to ensure that product descriptions are at least 500 characters long primarily addresses enhancing engagement and SEO practices. If the requirement is not met, the risks are relatively low. There could be a missed opportunity for improved searchability and less comprehensive information provided to potential customers, which can impact engagement and conversion rates. However, the lack of detail or character length in a description is not likely to result in significant legal, financial, or reputational harm.",
+        "evaluation_type": "python",
+        "evaluation_plan": "def evaluation_function(task_description, model_input, model_output):\n    \"\"\"\n    Evaluates whether the model_output satisfies the requirement:\n    \"The output must be at least 500 characters long.\"\n    \n    Parameters:\n    - task_description (str): Description of the task.\n    - model_input (any): The input provided to the model.\n    - model_output (str): The model's output description.\n    \n    Returns:\n    - bool: True if the model_output is at least 500 characters long, False otherwise.\n    \"\"\"\n    if isinstance(model_output, str) and len(model_output) >= 500:\n        return True\n    return False"
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must include at least three benefits that the product provides to the user.",
+        "risk_level": "medium",
+        "risk_analysis": "Failing to include at least three benefits in the product description may lead to customer confusion and could diminish the product's perceived value. This can result in lower conversions and reduced sales, as potential customers might not fully understand what advantages the product offers, compared to competitors. However, this is unlikely to cause any significant legal or reputational damage, though it may affect the product's market performance.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Begin by reviewing the model\u2019s output product description and identify the section(s) where product benefits are mentioned.\n2. Extract and list all the distinct benefits provided in the output, ensuring that each benefit clearly articulates the value or advantage to the user.\n3. Verify that the description includes at least three unique benefits.\n4. Conclude the evaluation by determining that the requirement is met if at least three benefits are found, or otherwise note the requirement is not met."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output must include a mention of the package content.",
+        "risk_level": "medium",
+        "risk_analysis": "Failure to include a mention of the package content in a product description can have several negative consequences. Customers may feel misled or disappointed upon receiving a product that does not meet their expectations, leading to a high rate of returns or negative reviews. This could damage the brand's reputation and result in lost sales and decreased customer trust. However, it is unlikely to cause legal issues or substantial financial loss unless the omission leads to false advertising claims. Overall, while the risk of serious harm is low, the impact on customer satisfaction and brand perception is more significant.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Check if the input explicitly mentions the package contents or what items are included in the package. If not, this requirement is not applicable.\n2. Review the model output to identify any mention of the package content, such as what items are included (e.g., accessory details, kit components, or package specifications).\n3. Check that the mention of the package content is clear and explicit, ensuring it lists the relevant items.\n4. Conclude that the model output meets the requirement if it successfully includes a clear mention of the package content; otherwise, it does not meet the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The product description should mention any personalization options available, including any important limitations or specifications.",
+        "risk_level": "medium",
+        "risk_analysis": "Failing to include personalization options, limitations, or specifications in the product description could lead to customer dissatisfaction and confusion. Customers may expect certain customization options that are not available, resulting in negative reviews or returns, and this could harm the brand reputation. Although it is unlikely to result in legal repercussions, omitting crucial details that influence purchase decisions can cause moderate damage to customer trust and sales.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Check if the input contains details about any personalization options available. If not, this requirement is not applicable.\n2. If personalization options are applicable, verify that the description explicitly lists these options and clearly explains the available choices.\n3. If the inputs mention any important limitations or specifications, make sure that these are also included in the output.\n4. Evaluate the overall clarity and completeness of the mentioned personalization options and associated limitations to determine if the requirement is fully met."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output must be free from any promotional prompts such as 'click add to cart'.",
+        "risk_level": "low",
+        "risk_analysis": "If the requirement to avoid promotional prompts such as 'click add to cart' is not met, it could result in customer dissatisfaction as they may perceive the content as too sales-heavy or intrusive. However, the overall risk is low, as the primary function of a product description is to provide information rather than serve as a direct sales command. The business might face minor reputational impact, but no significant legal, financial, or serious brand harm would occur.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Examine the generated product description output for any language that acts as a promotional prompt, specifically searching for the phrase \"click add to cart\" or similar directives.\n2. Confirm that the description remains informative and engaging without incorporating any call-to-action phrases or commands that could be interpreted as promotional prompts.\n3. Validate that none of the examples\u2019 outputs contain any phrases that encourage the user to perform a commercial action such as \"click add to cart.\"\n4. Conclude that if no promotional prompts are present, the output meets the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must avoid special characters as much as possible.",
+        "risk_level": "low",
+        "risk_analysis": "If the requirement to avoid special characters in product descriptions is not met, the most likely consequence would be user dissatisfaction, especially among users who prefer clean, clutter-free text. This could lead to reduced engagement or trust in the product descriptions, potentially impacting sales or user retention. However, this issue is unlikely to cause significant legal issues or serious harm to the business or users, as it primarily affects the presentation and readability of content.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Determine whether the output text (the engaging product description) is expected to include any special characters, such as punctuation marks, symbols, or formatting characters.\n2. Inspect the model\u2019s output for the presence of any special characters (e.g., symbols like @, #, %, &, *, etc.) beyond basic punctuation that might be necessary for readability.\n3. Evaluate whether the output avoids the use of non-essential or decorative special characters, ensuring it remains clear and textual.\n4. Conclude that the output meets the requirement if it uses only minimal special characters (basic periods, commas, etc.) and avoids unnecessary symbols."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must ensure that any numerical values or ranges are accurately represented if mentioned at all.",
+        "risk_level": "high",
+        "risk_analysis": "Ensuring that numerical values or ranges are accurately represented in product descriptions is crucial. Incorrect numerical information could lead to user confusion, result in the delivery of incorrect products, or mislead customers into making purchasing decisions based on false data. This is particularly significant if the products involved are related to sensitive uses, such as medical devices or equipment requiring specific dimensions. Failure to accurately represent such data can damage the company's reputation, lead to financial loss from returns and disputes, or even legal repercussions if the misinformation results in significant customer dissatisfaction or harm.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify all numerical values and ranges mentioned in the outputs (e.g., \"5 card slots\", \"20 inch\", \"4.8\\\"L\", \"3.1\\\"W\", \"5 yards\", \"180 inch\", \"48 inch\", etc.). If there are no mentions, this requirement is not applicable.\n2. Compare these numerical values and ranges with those present in the inputs to ensure they are accurately reproduced without modification. Omissions of numerical values in the inputs are not a problem.\n3. Verify that the units of measure (such as inches, yards, cm) are retained correctly in the output.\n4. Conclude if the output satisfies the requirement by accurately representing numerical values or ranges mentioned."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output should break down complex information into clearer, more concise points.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement to break down complex information into clearer, more concise points is crucial for ensuring user understanding and engagement. If this requirement is not met, it can lead to user confusion and dissatisfaction, as customers might struggle to grasp the product's features and benefits, potentially reducing sales conversion. However, it is unlikely to cause any direct legal or financial issues. The tangible impact would be on user experience and business operations, such as increased customer support inquiries. Therefore, the risk associated with not fulfilling this requirement is moderate, as it could affect the business's reputation and operational efficiency but isn't likely to result in severe legal or financial damage.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Verify that the model output divides the product description into separate, clearly defined points (e.g., bullet points or numbered items).\n2. Check that each point isolates a specific piece of complex information, rephrased in simpler and more concise language.\n3. Confirm that the breakdown collectively covers all key details from the original complex description without omitting critical information.\n4. Assess the clarity and conciseness of the points to ensure they improve the understanding of the product description."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must follow a coherent structure, ensuring logical flow from introduction to conclusion.",
+        "risk_level": "medium",
+        "risk_analysis": "If the requirement for a coherent structure and logical flow from introduction to conclusion is not met, this could lead to user confusion and dissatisfaction. However, while failing to meet this requirement might result in potential users being less engaged with the product descriptions, it is unlikely to cause significant legal, financial, or reputational damage. Users may simply move on to other products, resulting in missed business opportunities but not posing a major threat to the overall brand.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Verify that the output text begins with an engaging introduction that clearly presents the context or product and captures the reader's attention.\n2. Check that the middle portion of the text logically presents product features, benefits, and details in an organized manner that follows naturally from the introduction.\n3. Confirm that the text includes a concluding section that summarizes the key points or reinforces the product's value, ensuring a clear transition from the body.\n4. Assess the overall writing flow to ensure that each section (introduction, body, conclusion) is connected coherently, without abrupt shifts or missing transitions.\n5. Determine if the complete structure\u2014from introduction through body to conclusion\u2014allows the reader to follow a logical progression that meets the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must be written in English.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement to ensure that the output is written in English is critical for reaching the intended audience who understand English. If the requirement is not met, the communication might fail, leading to potential misunderstandings or misrepresentations about the product. This could lead to moderate user dissatisfaction as the descriptions may not be accessible to the target user base. However, it is unlikely to cause serious harm or legal issues since it primarily impacts user experience and comprehension rather than violating legal standards or core functionalities.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Inspect the model output to confirm that the entire text is written in English.\n2. Check for any sections where another language might appear; if so, flag these sections.\n3. Confirm that all product descriptions and additional output text use correct English grammar and vocabulary.\n4. Conclude that the output meets the requirement if no non-English text is present."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must avoid any explicit comparisons with products from brands unless specified in the context.",
+        "risk_level": "high",
+        "risk_analysis": "The requirement is to write product descriptions that avoid making explicit comparisons with other brands unless specified. The risk associated with failing to adhere to this requirement is primarily legal and reputational. Engaging in unauthorized comparisons could lead to trademark infringement claims or false advertising lawsuits, resulting in potential legal penalties. Additionally, it could damage the brand's reputation and credibility, as it may be seen as unprofessional or misleading by customers. The risk is thus linked to both potential legal ramifications and harm to the brand's image.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Read the product description output to determine whether it includes any explicit comparisons that reference products from specific brands.\n2. Identify any language or phrases that directly compare the product to other branded products (e.g., statements like \u201cbetter than [Brand]\u201d or \u201csuperior to [Brand]\u201d) that are not supported by the provided context.\n3. Confirm that the description focuses solely on the product information and features without drawing explicit comparisons to competitor products.\n4. Verify that if any brand names are mentioned, they are not used in an explicit comparative context.\n5. Conclude whether the output meets the requirement by checking that no explicit comparisons with products from brands are included."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must describe any features listed within the given Context in more detail.",
+        "risk_level": "medium",
+        "risk_analysis": "Failure to describe the features in more detail could lead to users being unable to fully understand the product, which may result in a decreased user interest or dissatisfaction due to unmet expectations. However, this is unlikely to result in legal issues or significant harm to the users, as they can seek additional information or clarification directly. The main risk is lost potential sales or reduced engagement due to lack of sufficient information, which classifies this as an operational inefficiency and a moderate level of user dissatisfaction.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify all the features mentioned in the provided Context (i.e., the product description details such as specifications and functionalities).\n2. Check that the output includes a clear, expanded explanation of each feature by describing how it works or why it is important. This involves looking for detailed elaboration beyond simply listing the features.\n3. Verify that the output addresses each feature mentioned in the Context, ensuring no key detail is omitted.\n4. Conclude that the output satisfies the requirement if it elaborates on the features with additional details as specified in the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "bottom-up",
+        "requirement": "The output must paint a vivid picture of the customer experience with practical use cases.",
+        "risk_level": "medium",
+        "risk_analysis": "Failure to meet the requirement of crafting engaging product descriptions that include vivid customer experiences and practical use cases could result in a disconnect between the product and potential consumers. This can lead to reduced consumer interest and engagement, ultimately affecting sales and market positioning. However, the risk does not pose any legal threats or significant reputational damage, as the shortcomings primarily relate to marketing and user engagement rather than compliance or safety.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify in the model output any descriptive language that creates a vivid, sensory image of the customer\u2019s experience with the product.\n2. Check that the output includes specific, practical use cases or scenarios that demonstrate how the product can be utilized in everyday life.\n3. Confirm that the description connects the product\u2019s features with benefits experienced by the customer in realistic situations, thereby painting a clear picture of its usage.\n4. Assess whether the overall output successfully evokes a tangible, engaging customer experience through the use of relatable, detailed examples."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must avoid excessive use of technical jargon, ensuring that the description is understandable to a general audience.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement to avoid excessive use of technical jargon in product descriptions is aimed at ensuring the accessibility and comprehensibility of information for a general audience. Failure to implement this requirement could lead to potential customers being confused or feeling alienated, as they may not understand the product, what it offers, or its benefits. This could result in a decrease in customer engagement and conversion rates. While this does impact customer satisfaction and potentially sales, it is unlikely to cause legal issues or serious harm. It mainly affects the perception and understandability of the product, making it a significant but not critical concern.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Read the product description output and identify segments that contain technical jargon or specialized terms.\n2. Evaluate each identified technical term to determine if it is necessary for conveying key information or if it can be expressed in simpler language for general understanding.\n3. Assess whether the description provides explanations or context for any unavoidable technical terms, ensuring clarity for a general audience.\n4. Verify that the overall language is plain and accessible, with excessive technical details minimized.\n5. Conclude whether the output meets the requirement by ensuring that only essential technical terms are used and all content is understandable to a general audience."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "top-down",
+        "requirement": "The output must use engaging and vivid language to capture and retain the reader's attention.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement is that the product descriptions must be engaging and vivid. Failing to meet this requirement could lead to potential customers losing interest quickly and abandoning the product page, which may result in reduced sales and lower conversion rates. However, the absence of such engaging content is unlikely to cause significant legal or reputational harm to the business. It primarily impacts user engagement and satisfaction, which can ultimately affect revenue. Therefore, the risk is mostly associated with operational inefficiencies and moderate user dissatisfaction.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Read the product description output carefully to identify the use of engaging and vivid language, such as colorful adjectives and dynamic phrases that evoke visual imagery.\n2. Determine if the language actively captures and retains the reader\u2019s attention by analyzing the overall tone and wording choices.\n3. Verify that the description does more than simply list features; it should paint a picture that stimulates interest and emotional engagement.\n4. Check for consistent use of engaging expressions throughout the text to ensure the entire output maintains a captivating style.\n5. Conclude by assessing whether the text fully meets the requirement by providing an engaging narrative that retains the reader's attention."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must highlight the product's features.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement to highlight the product's features in the product description is critical for ensuring that potential customers understand what they are purchasing. If this is not implemented properly, it could lead to confusion or dissatisfaction among customers who feel they did not get what they expected. This could result in returns, negative reviews, and damage to the brand's reputation. However, failure to meet this requirement is unlikely to have significant legal consequences unless there is misleading information. The primary impact would be on customer perception and potential sales.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify in the model output the section where product features are intended to be described.\n2. Check that the output explicitly highlights the key product features (such as specific design elements, materials, functionality, and any distinctive benefits) derived from the product context.\n3. Verify that the highlighting is clear, using methods like bullet points, emphasized text, or clear phrasing that separates features from other information.\n4. Conclude that the requirement is met if all major features are distinctly and effectively highlighted in the output; otherwise, determine that the output fails to meet the requirement."
+    },
+    {
+        "task": "product",
+        "analyst": "openai/gpt-4o-2024-08-06",
+        "source": "prompt",
+        "requirement": "The output must not reuse any description found in the given Context.",
+        "risk_level": "medium",
+        "risk_analysis": "The requirement is to ensure that the product description generated by the LLM does not reuse any content from the provided context. Failing to implement this properly could lead to moderate user dissatisfaction if descriptions appear unoriginal or plagiarized. This can hurt the brand's reputation for creativity and originality. However, it is unlikely to cause significant legal issues unless the content directly violates copyright laws of third-party proprietary content. The risk of direct legal exposure is relatively low if the material in the context isn't proprietary, but it's important to maintain trust through original work.",
+        "evaluation_type": "llm",
+        "evaluation_plan": "1. Identify which parts of the provided Context include a full and standalone product description.\n2. Examine the model's response to assess whether it includes verbatim reproduction of any complete product description from the Context.\n3. Make a final assessment as to whether the model has managed to present the information without replicating the original description word-for-word, thereby avoiding plagiarism rather than simply rewording the content."
+    }
+]

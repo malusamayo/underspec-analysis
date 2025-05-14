@@ -1,0 +1,202 @@
+[
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should include information about verifying the setup or configuration before execution, if applicable.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement is to include information about verifying the setup or configuration before executing the code snippet. If this requirement is not met, there is a risk that users may attempt to execute the code without having the correct configuration, leading to errors or unexpected behavior. This could cause user frustration and potential loss of trust in the documentation or application. However, the risk of legal, financial, or reputational damage is minimal unless the setup errors result in data loss or compromise. Usually, without this verification, users may experience operational inefficiencies or nuisances which could lead to increased support inquiries.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Determine whether the code snippet includes any setup or configuration steps that must be verified before execution (e.g., device selection, program build configuration, or environment prerequisites). If not, this requirement is not applicable.\n2. If such configuration steps exist, check that the explanation explicitly mentions how the code verifies those configurations are correctly set up before execution.\n3. Confirm that the explanation provides details on how to validate these setup or configuration steps, such as checks or printed outputs that serve as confirmation."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "top-down",
+    "requirement": "The output should identify and explain any variables or data structures used in the code snippet.",
+    "risk_level": "medium",
+    "risk_analysis": "If the requirement to identify and explain variables or data structures in a code snippet is not implemented properly, users may experience confusion or misunderstand the logic of the code. This can lead to errors when users attempt to modify or use the code, causing operational inefficiencies or user dissatisfaction. However, failing to meet this requirement is unlikely to result in significant legal or reputational damage to the business, as it mainly affects the clarity and educational value of the code explanation.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Examine the output to identify if all variables and data structures present in the code snippet are clearly listed.\n2. Confirm that the explanation provides a clear description of the role and purpose of each identified variable and data structure.\n3. Finally, determine that the overall evaluation meets the requirement by checking if the output comprehensively identifies and explains the variables and data structures used in the code snippet."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should explicitly define the scope of explanation without making assumptions about specific use cases.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement is to ensure that code explanations are comprehensive and do not assume any specific context or use cases. If this requirement is not properly implemented, the main risk is user confusion or misinterpretation of the code's purpose. While this could lead to frustration or inefficiency for users trying to comprehend the code\u2019s functionality, it does not pose significant legal, financial, or reputational threats to the company. Users may experience some dissatisfaction if explanations lack clarity, but the overall impact remains confined to user experience rather than broader operational or business concerns.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Review the introduction or opening paragraphs of the explanation to determine whether there is an explicit statement that defines the scope\u2014clarifying which parts of the code are being discussed and what might be excluded.\n2. Analyze the explanation for mentions of specific applications or scenarios. Acceptable content includes general analogies or illustrative examples that aid in understanding the code's function, while unacceptable content involves introducing hypothetical applications or industries not clearly supported by the code.\n3. Conclude the explanation meets the requirement if it successfully meets both checks."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "prompt",
+    "requirement": "The output should aim to make the explanation accessible to someone with minimal coding knowledge.",
+    "risk_level": "medium",
+    "risk_analysis": "If the requirement to make the code explanation accessible to someone with minimal coding knowledge is not met, there could be a communication gap between the technical team and non-technical stakeholders or users. This could lead to misunderstandings, incorrect application of the code, and a general lack of trust in the technical capabilities of the team. However, this is unlikely to result in legal issues or substantial harm, as the core functionality of the application remains unaffected.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Verify that the explanation of the code snippet is written in simple, plain language that avoids advanced programming jargon.\n2. Check that technical terms, if mentioned, are accompanied by brief and clear definitions or analogies understandable by someone with minimal coding experience.\n3. Ensure that the explanation focuses on the overall functionality of the code rather than intricate implementation details that might be confusing to beginners.\n4. Confirm that any concepts or processes introduced are explained step-by-step, highlighting the purpose and outcome in an accessible way.\n5. Based on these checks, determine whether the explanation fully meets the requirement of being targeted towards someone with minimal coding knowledge."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "top-down",
+    "requirement": "If there are error handling mechanisms, the output should accurately describe them and explain how they handle potential errors.",
+    "risk_level": "high",
+    "risk_analysis": "The requirement indicates that any documented code explanation must accurately detail and explain error handling mechanisms present in the code. Failing to meet this requirement could lead to several risks. Firstly, misunderstanding error handling processes could lead to misconfigured systems, causing unexpected behavior in applications relying on that code, which could cascade into broader system failures. Secondly, if the code in question pertains to critical systems such as financial processing or healthcare applications, inadequate understanding of error handling could introduce vulnerabilities, compromise data integrity, or result in non-compliance with security standards, exposing the business to legal liabilities. Additionally, in user-facing applications, lack of proper error handling could result in poor user experience and loss of trust. Considering these factors, the risk of not adequately explaining the error handling mechanisms is significant.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Review the code snippet for error handling mechanisms such as try-catch blocks, error-checking conditions, and usage of error handling functions or libraries. If not, this requirement is not applicable.\n2. Ensure that the explanation describes error handling mechanisms present in the code snippet."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should address potential edge cases tested by the code.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement to address potential edge cases tested by the code is crucial for ensuring the robustness of the application. Edge cases are scenarios that occur only at the extreme (maximum or minimum) operating parameters. If not properly analyzed and addressed, they can cause the application to fail under certain conditions that are not part of normal operation. This could lead to user dissatisfaction if the application does not perform as expected in all cases. However, the consequences are unlikely to be severe unless the application is used in safety-critical areas. The business risk is more likely connected to user complaints and reputational harm due to perceived unreliability, rather than legal implications.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify explicit logic in the code snippet handling non-standard, boundary, or error conditions (e.g., specific `if` checks for `None`/empty/zero/duplicates/flags, `try-except` blocks, validation code, non-placeholder `test_` functions for invalid/boundary cases, data consistency checks, signal handling); exclude schema definitions alone or placeholder tests. If such logic exists, the requirement is applicable.\n2. If applicable, review the explanation: verify it explicitly mentions the identified conditions, accurately describes how the code handles them (e.g., skips, raises error, defaults), and addresses all major identified cases.\n3. If the explanation meets these criteria, the requirement is met; otherwise, it is not."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should not exceed 500 words to maintain conciseness and focus.",
+    "risk_level": "low",
+    "risk_analysis": "If the requirement to keep the explanation within 500 words is not met, the risk level is low. Failing to adhere to this requirement may result in a long-winded explanation, which could lead to a minor inconvenience for readers seeking concise information. This might make it slightly less efficient for users to quickly grasp the key points, but it is unlikely to cause any harm or significant operational inefficiencies. The impact on user satisfaction is likely minimal because users can still extract the required information even if it requires reading more content.",
+    "evaluation_type": "python",
+    "evaluation_plan": "def evaluation_function(task_description, model_input, model_output):\n    \"\"\"\n    Evaluates whether the model output satisfies the following requirement:\n    \"The output should not exceed 500 words to maintain conciseness and focus.\"\n    \n    Parameters:\n      task_description (str): Description of the task.\n      model_input (any): The input provided to the model (unused in this check).\n      model_output (str): The output produced by the model.\n      \n    Returns:\n      bool: True if the model output contains 500 words or less, False otherwise.\n    \"\"\"\n    if not isinstance(model_output, str):\n        # If the model output isn't a string, convert it to a string.\n        model_output = str(model_output)\n    \n    # Split the output on whitespace to count words.\n    words = model_output.split()\n    return len(words) <= 500"
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should provide an example of how at least one function, class, or constant imported from the code can be used.",
+    "risk_level": "low",
+    "risk_analysis": "The requirement asks for an example of the usage of at least one component from the imported code, which serves to clarify and educate users on how to correctly utilize the said code. If this requirement is not met, users may experience confusion or misuse the code, leading to inefficiencies or errors in implementation. However, the lack of a usage example is unlikely to cause significant harm or legal issues. The primary consequence would be user dissatisfaction or frustration.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Check the output explanation for any examples that demonstrate how to use at least one function, class, or constant.\n2. Verify that the example includes concrete usage, such as instantiating a class, calling a function, or using a constant in context."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "top-down",
+    "requirement": "The output should detect and describe any dependencies or libraries required by the code snippet.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement to detect and describe dependencies or libraries required by the code snippet is crucial for users who need to understand the operational environment of the code. Failing to implement this properly can lead to several issues:\n\n1. **Operational Inefficiency**: Users may encounter errors when trying to execute the code due to missing libraries, leading to frustration and a negative user experience.\n\n2. **Increased Support Load**: Users might frequently contact support or seek help due to lack of clarity on required dependencies, increasing operational costs for the company.\n\n3. **Reputational Impact**: If users perceive that the application lacks thoroughness or fails to provide necessary information, it may damage the application\u2019s reputation as a reliable source of technical information.\n\nHowever, not meeting this requirement is unlikely to cause legal issues or serious harm to users.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Examine the code snippet\u2019s import statements and any explicit references that indicate dependency libraries (e.g., external packages and modules).\n2. Check that the output explanation accurately lists these dependencies and provides a brief description of each (e.g., the purpose or role each library plays in the snippet).\n3. Conclude the evaluation by determining whether the explanation fully detects and describes the required dependencies and libraries as specified by the requirement."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The explanation should include potential applications and implications of the coded algorithm.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement is to include potential applications and implications in the explanation of a code snippet. The risk associated with not properly implementing this requirement is medium. Omitting applications and implications can lead to several issues: misunderstanding of the code's potential uses, failure to properly assess its relevance or impact to a project or business case, and missed opportunities for innovation or revenue generation by not fully exploring the code's potential. These factors can result in moderate user dissatisfaction and operational inefficiencies, especially if the code is integral to a larger business process or strategy. However, it is unlikely this would cause legal issues or severe harm, thereby not constituting a high risk.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify within the explanation whether at least one clear potential application of the code is described, such as a real-world use case, system integration point, or a key capability enabled by the code.\n2. Identify within the explanation whether at least one clear implication of the code is described, such as a limitation, trade-off, performance characteristic, security risk, or dependency.\n3. Evaluate whether both the application and implication identified are explained with reasonable clarity and relevance to the code\u2014going beyond mere mentions to show contextual understanding.\n4. Conclude whether the explanation meets the requirement by confirming that both Step 1 and Step 2 are satisfied and the explanations in Step 3 meet the minimum threshold of clarity and contextual insight."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should provide a high-level summary at the beginning to set the context.",
+    "risk_level": "low",
+    "risk_analysis": "Failing to provide a high-level summary at the beginning of a code explanation could lead to user confusion or misinterpretation of the code's purpose, especially for readers who are not familiar with the context. However, this is unlikely to cause severe legal or financial repercussions for the business. The main risk involves potential user dissatisfaction, as users may require a deeper understanding at the outset to grasp the code's relevance or importance quickly. Inefficient comprehension might reduce user engagement or satisfaction temporarily but is unlikely to have long-term negative implications or escalate into major issues.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Review the model output to identify whether it begins with a high-level summary that sets the context for the code snippet.\n2. Confirm that the high-level summary is clearly placed at the beginning of the output, preceding detailed explanations.\n3. Based on these checks, judge whether the model output meets the requirement of providing a high-level summary at the beginning."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should mention any missing components or aspects in the provided code snippet, such as lack of functionality or completeness.",
+    "risk_level": "medium",
+    "risk_analysis": "Failing to mention missing components or aspects in a code snippet might result in users implementing incorrect or incomplete solutions. If users rely on the explanation for educational purposes, this could potentially lead to programming errors, inefficient code, or software bugs in their own projects. Nevertheless, this risk is primarily related to user satisfaction and learning outcomes, rather than critical functional or business operations. Therefore, the potential negative consequences are limited to reduced user trust and satisfaction, with minimal risk of legal or financial repercussions.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify all points in the code snippet that could indicate an incomplete implementation (for example, comments like \"TODO\", unimplemented sections, or incomplete functionality). If there are no incomplete components, this requirement is not applicable.\n2. Verify that the evaluation (i.e., the explanation provided by the model) explicitly identifies any missing components."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "prompt",
+    "requirement": "The output should explain the purpose of the code.",
+    "risk_level": "low",
+    "risk_analysis": "The requirement to explain the purpose of a code snippet is generally low risk. If the explanation is not done correctly, the immediate consequence is likely to be miscommunication or misunderstanding regarding the code's functionality. This could lead to minor development inefficiencies or incorrect usage of the code, but it is unlikely to cause legal issues, financial loss, or significant harm to users.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Check that the explanation explicitly states the overall purpose or intent of the provided code snippet.\n2. Conclude that the explanation meets the requirement if it clearly explains the purpose of the code."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should explain scenarios where certain features of the code are particularly beneficial or efficient.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement asks for explanations on scenarios where certain features of the code are particularly beneficial or efficient. If this requirement is not properly implemented, there are potential risks such as users misunderstanding the capabilities of the code, leading to incorrect usage or expectations. This could result in users experiencing inefficiencies or being unable to leverage the code to its full potential. While this may lead to user dissatisfaction, it is unlikely to cause legal issues or significant operational setbacks. Therefore, the risk would primarily impact user experience and perceived value.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify the key features described in the output explanation that pertain specifically to beneficial or efficient scenarios in the code (e.g., performance optimizations, effective error handling, efficient data processing).\n2. Verify that the explanation explicitly names one or more scenarios or use cases where the identified code features offer clear benefits or efficiency gains."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "prompt",
+    "requirement": "The output should use analogies and examples to clarify the explanation.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement is that the explanations for code snippets should include analogies and examples. If this requirement is not met, there could be some impact on the user experience, as explanations without analogies might be harder to understand for users, especially those who are new to programming or unfamiliar with specific concepts. Users may take longer to grasp the explanations, leading to potential frustration or misinterpretation of the code's functionality. However, this does not pose any legal, financial, or substantial reputational risk.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Check if the explanation includes analogies\u2014statements that compare the code or its elements to everyday objects or scenarios\u2014to help clarify technical aspects.\n2. Assess that the analogies and examples are relevant and enhance understanding of the code snippet.\n3. Conclude that the requirement is met if the explanation successfully uses analogies or examples to clarify the explanation."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "bottom-up",
+    "requirement": "The output should not describe components or operations not present in the provided code.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement states that the output should not describe components or operations not present in the provided code. Failing to meet this requirement could mislead users by providing them with incorrect information about the functionality of the code, which could further lead to confusion and incorrect implementation in their own projects. However, such a failure is unlikely to cause legal or serious financial repercussions. The primary risk is user frustration or a loss of trust in the accuracy of the application's explanations.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Verify that the explanation output exclusively refers to components and operations explicitly found in the provided code snippet.\n2. Identify each described component or operation in the output and cross-check with the code to ensure it is present in the snippet.\n3. Check that no additional components, functions, or operations that are not defined in the code appear in the explanation.\n4. Conclude that the output meets the requirement if it solely describes the elements and operations found in the code snippet."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "top-down",
+    "requirement": "The output should check and explain any potential side effects or state changes that occur during code execution.",
+    "risk_level": "high",
+    "risk_analysis": "If the requirement to check and explain any potential side effects or state changes during code execution is not properly implemented, users may misunderstand how the code functions. This misunderstanding could lead to significant issues if the code modifies states or has side effects that aren't apparent, potentially causing system malfunctions, data corruption, or unintended behaviors within the application. For a business, this could result in lost productivity, increased troubleshooting resources, and possibly damage to user trust if the application behaves unpredictably.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Read through the model output explanation and identify any sections where the explanation addresses side effects (such as changes in program state, modifications of global variables, changes in session/database, or handling of asynchronous state).\n2. Locate and verify if the explanation explicitly discusses potential state changes that occur during code execution.\n3. Check that the explanation correctly identifies unintended side effects (e.g., side effects relating to exception handling or state changes in iterative processing, such as commit/rollback operations in the first code sample).\n4. Finally, determine whether the explanation meets the requirement by clearly and thoroughly checking and explaining the potential side effects or state changes that occur during execution."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "top-down",
+    "requirement": "The output should include a precise, step-by-step execution order that aligns with the code.",
+    "risk_level": "low",
+    "risk_analysis": "If the requirement of providing a precise, step-by-step execution order that aligns with the code is not met, it could lead to misunderstandings or incorrect application of the code. However, the impact would be primarily on the ease of learning or understanding for the user rather than any direct legal or financial consequences. Hence, the risk is mainly around user dissatisfaction due to potential confusion or increased learning time. There is a low likelihood of causing significant harm or operational issues.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Verify that the explanation provides a precise and explicit chronological walk-through of what happens when the code runs, mirroring the real runtime order in the code.\n2. The requirement is satisfied only if the detailed, in-order sequence of runtime actions are present and clearly aligned with the code's actual behavior."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "prompt",
+    "requirement": "The output should break down the code's functionality.",
+    "risk_level": "medium",
+    "risk_analysis": "The requirement states that the output should break down the code's functionality. This requirement is important for ensuring users understand how the code works. Failing to implement this effectively may lead to user confusion or misuse of the code, resulting in inefficiencies and frustration. However, it is unlikely to cause significant harm or legal issues as it mainly affects the ease of understanding rather than critical operational aspects.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify all the primary components of the code snippet.\n2. Check that the explanation explicitly breaks down the code by describing the functionality of each component.\n3. Confirm that the output meets the requirement by ensuring the explanation is segmented into clear parts that describe the code\u2019s functionality step by step."
+  },
+  {
+    "task": "commitpack",
+    "analyst": "openai/gpt-4o-2024-08-06",
+    "source": "prompt",
+    "requirement": "If technical jargon is used, the output should provide clear explanations for it.",
+    "risk_level": "medium",
+    "risk_analysis": "If the requirement to provide clear explanations for technical jargon is not met, this can lead to user confusion and frustration, particularly among non-technical users. Users might find the output inaccessible or difficult to understand, which can lead to decreased user satisfaction and potentially limit the usability of the application. However, since this does not pose legal, financial, or severe reputational risks, the consequences are primarily related to user experience.",
+    "evaluation_type": "llm",
+    "evaluation_plan": "1. Identify any instances of technical jargon within the model output explanation by scanning for terms that may not be readily understood by a non-expert (e.g., domain-specific terms, acronyms, or advanced programming terms).\n2. For every identified technical term or jargon, verify that the explanation provides a clear, plain-language description or contextualization of the term.\n3. Ensure that the explanations of the technical jargon directly relate to the code snippet or its functionality, making the overall explanation accessible.\n4. Conclude that the model output meets the requirement if all technical jargon is accompanied by clear and understandable explanations."
+  }
+]
