@@ -1,0 +1,22 @@
+{
+    "fixed_0": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should include information about verifying the setup or configuration before execution, if applicable.",
+    "fixed_1": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should identify and explain any variables or data structures used in the code snippet.",
+    "fixed_2": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should explicitly define the scope of explanation without making assumptions about specific use cases.",
+    "fixed_3": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should aim to make the explanation accessible to someone with minimal coding knowledge.",
+    "fixed_4": "Explain the code snippet.\n\nFollow the guideline below:\n- If there are error handling mechanisms, the output should accurately describe them and explain how they handle potential errors.",
+    "fixed_5": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should address potential edge cases tested by the code.",
+    "fixed_6": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should not exceed 500 words to maintain conciseness and focus.",
+    "fixed_7": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should provide an example of how at least one function, class, or constant imported from the code can be used.",
+    "fixed_8": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should detect and describe any dependencies or libraries required by the code snippet.",
+    "fixed_9": "Explain the code snippet.\n\nFollow the guideline below:\n- The explanation should include potential applications and implications of the coded algorithm.",
+    "fixed_10": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should provide a high-level summary at the beginning to set the context.",
+    "fixed_11": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should mention any missing components or aspects in the provided code snippet, such as lack of functionality or completeness.",
+    "fixed_12": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should explain the purpose of the code.",
+    "fixed_13": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should explain scenarios where certain features of the code are particularly beneficial or efficient.",
+    "fixed_14": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should use analogies and examples to clarify the explanation.",
+    "fixed_15": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should not describe components or operations not present in the provided code.",
+    "fixed_16": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should check and explain any potential side effects or state changes that occur during code execution.",
+    "fixed_17": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should include a precise, step-by-step execution order that aligns with the code.",
+    "fixed_18": "Explain the code snippet.\n\nFollow the guideline below:\n- The output should break down the code's functionality.",
+    "fixed_19": "Explain the code snippet.\n\nFollow the guideline below:\n- If technical jargon is used, the output should provide clear explanations for it."
+}

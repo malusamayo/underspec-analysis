@@ -1,0 +1,22 @@
+{
+    "fixed_0": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must ensure that key product information is easily skimmable.",
+    "fixed_1": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must not use Markdown syntax.",
+    "fixed_2": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output should clearly mention any customer support or warranty information included with the product.",
+    "fixed_3": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must be at least 500 characters long.",
+    "fixed_4": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must include at least three benefits that the product provides to the user.",
+    "fixed_5": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must include a mention of the package content.",
+    "fixed_6": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The product description should mention any personalization options available, including any important limitations or specifications.",
+    "fixed_7": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must be free from any promotional prompts such as 'click add to cart'.",
+    "fixed_8": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must avoid special characters as much as possible.",
+    "fixed_9": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must ensure that any numerical values or ranges are accurately represented if mentioned at all.",
+    "fixed_10": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output should break down complex information into clearer, more concise points.",
+    "fixed_11": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must follow a coherent structure, ensuring logical flow from introduction to conclusion.",
+    "fixed_12": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must be written in English.",
+    "fixed_13": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must avoid any explicit comparisons with products from brands unless specified in the context.",
+    "fixed_14": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must describe any features listed within the given Context in more detail.",
+    "fixed_15": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must paint a vivid picture of the customer experience with practical use cases.",
+    "fixed_16": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must avoid excessive use of technical jargon, ensuring that the description is understandable to a general audience.",
+    "fixed_17": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must use engaging and vivid language to capture and retain the reader's attention.",
+    "fixed_18": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must highlight the product's features.",
+    "fixed_19": "Write engaging product description from the context.\n\nFollow the guideline below:\n- The output must not reuse any description found in the given Context."
+}
