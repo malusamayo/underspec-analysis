@@ -1,17 +1,22 @@
 # Under-specification in LLM Uses
-This is a repository for analyzing the impacts of under-specification to LLM behaviors.
+This is a repository for analyzing the impacts of under-specification on LLM behaviors.
 
 ## Data available
-We share all experiment configurations in `data/configs`, all prompts in `data/prompts`, all curated requirements in `data/requirements`, and the results in []().
+We share all experiment configurations in `data/configs`, all prompts in `data/prompts`, all curated requirements in `data/requirements`, and the evaluation results [here](https://figshare.com/s/38acdc02f9cae8c39198).
 
-## Steps to reproduce the experiments
+## Steps to reproduce the analysis
+Download evaluation data from [here](https://figshare.com/s/38acdc02f9cae8c39198). Create a three repositores `data/results/commitpack`, `data/results/trip`, `data/results/product`, and uncompress the evaluation results into each repository.
+
+Run steps in `analysis-reproduction.ipynb`.
+
+## Steps to reproduce the full experiments
 
 First, install the dependencies with poetry: `poetry install`. 
 
 Next, add your OpenAI key for running the OpenAI models, and Bedrock key for running the Llama3 models.
 
 
-### Experiment 3.1 / 3.2
+### Experiment 3.2 / 3.3
 
 ```bash
 poetry run python3 run.py --config=data/configs/commitpack_main.yaml 
@@ -19,7 +24,7 @@ poetry run python3 run.py --config=data/configs/trip_main.yaml
 poetry run python3 run.py --config=data/configs/product_main.yaml 
 ```
 
-### Experiment 4.1
+### Experiment 3.5
 
 ```bash
 poetry run python3 run.py --config=data/configs/commitpack_fix.yaml 
@@ -27,7 +32,7 @@ poetry run python3 run.py --config=data/configs/trip_fix.yaml
 poetry run python3 run.py --config=data/configs/product_fix.yaml 
 ```
 
-### Experiment 4.2
+### Experiment 4.1 / 4.2
 
 To rerun prompt optimization, use
 
