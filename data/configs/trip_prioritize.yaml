@@ -1,0 +1,7 @@
+task_name: "trip"
+prompt_paths:
+  - "data/prompts/trip_n19_optimized.json"
+model_names:
+  - "llama3.3-70b"
+prompt_subsets:
+  - "optimized_llama"

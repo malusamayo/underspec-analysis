@@ -1,0 +1,10 @@
+task_name: "commitpack"
+prompt_paths:
+  - "data/prompts/commitpack_n1.json"
+  - "data/prompts/commitpack_n5.json"
+  - "data/prompts/commitpack_n19.json"
+model_names:
+  - "gpt-4o"
+  - "llama3.3-70b"
+prompt_subsets:
+  - "fixed"

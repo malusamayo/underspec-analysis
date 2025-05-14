@@ -1,0 +1,7 @@
+task_name: "product"
+prompt_paths:
+  - "data/prompts/product_n19_optimized.json"
+model_names:
+  - "llama3.3-70b"
+prompt_subsets:
+  - "optimized_llama"

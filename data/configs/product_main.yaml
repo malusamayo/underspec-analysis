@@ -1,0 +1,13 @@
+task_name: "product"
+prompt_paths:
+  - "data/prompts/product_n10.json"
+model_names:
+  - "gpt-4o"
+  - "gpt-4o-2024-05-13"
+  - "gpt-4o-2024-11-20"
+  - "llama3-70b"
+  - "llama3.1-70b"
+  - "llama3.3-70b"
+  - "o3-mini"
+prompt_subsets:
+  - "fixed"

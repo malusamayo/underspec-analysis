@@ -1,0 +1,10 @@
+task_name: "trip"
+prompt_paths:
+  - "data/prompts/trip_n1.json"
+  - "data/prompts/trip_n5.json"
+  - "data/prompts/trip_n19.json"
+model_names:
+  - "gpt-4o"
+  - "llama3.3-70b"
+prompt_subsets:
+  - "fixed"

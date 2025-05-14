@@ -1,0 +1,12 @@
+task_name: "trip"
+prompt_paths:
+  - "data/prompts/trip_n19.json"
+model_names:
+  - "llama3.3-70b"
+prompt_subsets:
+  - "fixed"
+optimizer_names:
+  - "openai"
+  - "copro"
+  - "reqaware"
+  - "copro_baseline"
