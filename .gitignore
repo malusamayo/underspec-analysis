@@ -8,3 +8,4 @@ poetry.lock
 slurm-*.out
 *.pdf
 .ipynb_checkpoints
+uv.lock
