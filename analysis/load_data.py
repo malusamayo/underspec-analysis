@@ -188,7 +188,6 @@ def prepare_data_explain_code_v0():
 def prepare_data_explain_code_v1():
     data_path = "data/leetcode-py-all.csv"
     input_key = "python_solution"
-    requirement_path = ""
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -200,13 +199,11 @@ def prepare_data_explain_code_v1():
         "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
     )
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
 def prepare_data_explain_code():
     data_path = "data/commitpack_357.csv"
     input_key = "code"
-    requirement_path = "data/requirements/commitpack.json"
-    prompt_path = "data/prompts/commitpack.json"
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -218,13 +215,11 @@ def prepare_data_explain_code():
         "Avoid using technical jargon unless absolutely necessary, and provide clear explanations for any jargon used. The goal is to help the reader understand what the code does and how it works at a high level."
     )
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
 def prepare_data_arxiv_summarization():
     data_path = "data/ai_arxiv.csv"
     input_key = "content"
-    requirement_path = "data/requirements/arxiv.json"
-    prompt_path = "data/prompts/arxiv.json"
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -247,13 +242,11 @@ Here are some things to keep in mind:
 - Assume readers know what common AI acronyms stand for like LLM and AI
 - Don't mention any part of this prompt"""
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
 def prepare_data_product_descrp_gen():
     data_path = "data/esci.csv"
     input_key = "product_text"
-    requirement_path = "data/requirements/product.json"
-    prompt_path = "data/prompts/product.json"
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -266,14 +259,12 @@ If you find a "description" in the given "Context", do NOT reuse it, but make su
 DO NOT use any Markdown syntax, and avoid special characters as much as possible.
 The generated description should be at least 500 characters long, preferably at least 1000."""
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
 def prepare_data_trip_advisor():
     # data_path = "data/travel_planner.csv"
     data_path = "data/travel_conversations.csv"
     input_key = "query"
-    requirement_path = "data/requirements/trip.json"
-    prompt_path = "data/prompts/trip.json"
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -290,12 +281,49 @@ def prepare_data_trip_advisor():
    - Clarify any ambiguous preferences. 
    - Show enthusiasm for exploring new cultures and experiences."""
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path, prompt_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
+# https://github.com/linexjlin/GPTs/blob/3adfb7b38423b64a995057483c1f9007ed5f4da5/prompts/Medical%20Diagnosis%20Assistant.md
+def prepare_data_health_consulting():
+    data_path = "data/healthbench_consulting.csv"
+    input_key = "query"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
+
+    task_description = "Offer symptom guidance, medical info, first-aid tips, and health advice."
+
+    prompt = """Features and Capabilities:
+
+Symptom Checker: Users can describe their symptoms, and MedDiagnose ChatGPT will provide possible explanations and suggest potential conditions or illnesses associated with those symptoms.
+
+General Medical Information: The AI offers easy-to-understand explanations of various medical terms, procedures, and concepts, making it a valuable educational tool.
+
+First Aid Tips: MedDiagnose ChatGPT can provide basic first aid instructions for common injuries and illnesses, such as burns, cuts, or allergies, to help users take immediate action when needed.
+
+Prevention and Lifestyle Advice: It offers guidance on maintaining a healthy lifestyle, including diet recommendations, exercise tips, and advice for preventing common health issues.
+
+Medical Resources: The AI can direct users to trusted medical resources, reputable websites, and recommend healthcare professionals for further assistance.
+
+Medication Information: Users can inquire about over-the-counter and prescription medications, including side effects, dosages, and potential interactions.
+
+Emergency Response Guidance: In case of emergencies, MedDiagnose ChatGPT can provide step-by-step instructions for CPR, choking, and other life-saving procedures.
+
+User Interaction:
+
+Users can describe their symptoms or ask questions about medical conditions in plain language. MedDiagnose ChatGPT responds with clear and informative answers, providing explanations, suggestions, and recommendations. Ethical Considerations:
+
+The AI should emphasize that it is not a substitute for professional medical advice, diagnosis, or treatment. It encourages users to consult healthcare professionals for accurate medical assessments. Privacy and data security should be a top priority to protect users' sensitive medical information. Audience:
+
+Individuals seeking general medical information, preliminary symptom assessments, and advice on common health concerns. Benefits:
+
+Provides accessible and reliable medical information. Offers guidance for users to make informed decisions about their health. Promotes health awareness and preventive measures. Disclaimer: MedDiagnose ChatGPT should always include a clear disclaimer stating that it is not a licensed medical practitioner and should not be used as a substitute for professional medical advice."""
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
+
+# https://platform.claude.com/docs/en/resources/prompt-library/lesson-planner
 def prepare_data_plan_lesson():
-    data_path = "data/lesson_plan.csv"
+    data_path = "data/lesson_plans.csv"
     input_key = "input"
-    requirement_path = ""
 
     trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
 
@@ -311,7 +339,26 @@ def prepare_data_plan_lesson():
         "The lesson plan should be well-organized, easy to follow, and promote active learning and critical thinking."
     )
 
-    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset, requirement_path
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
+
+# 
+def prepare_data_generate_website():
+    data_path = "data/webgen.csv"
+    input_key = "instruction"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
+
+    task_description = "Generate a one-page website based on the given specifications."
+
+    prompt = (
+        "Your task is to create a one-page website based on the given specifications, delivered as an HTML file with embedded JavaScript and CSS. "
+        "The website should incorporate a variety of engaging and interactive design features, such as drop-down menus, dynamic text and content, clickable buttons, and more. "
+        "Ensure that the design is visually appealing, responsive, and user-friendly. "
+        "The HTML, CSS, and JavaScript code should be well-structured, efficiently organized, and properly commented for readability and maintainability."
+    )
+
+    return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
+
 
 def prepare_data(
     task_name,
@@ -330,38 +377,51 @@ def prepare_data(
         case "lc":
             task_description, TaskProgram, trainset, valset, requirement_path = prepare_data_explain_code_v1()
         case "commitpack":
-            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_explain_code()
+            task_description, TaskProgram, trainset, valset = prepare_data_explain_code()
         case "arxiv":
-            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_arxiv_summarization()
+            task_description, TaskProgram, trainset, valset = prepare_data_arxiv_summarization()
         case "product":
-            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_product_descrp_gen()
+            task_description, TaskProgram, trainset, valset = prepare_data_product_descrp_gen()
         case "trip":
-            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = prepare_data_trip_advisor()
+            task_description, TaskProgram, trainset, valset = prepare_data_trip_advisor()
+        case "health":
+            task_description, TaskProgram, trainset, valset = prepare_data_health_consulting()
+        case "education":
+            task_description, TaskProgram, trainset, valset = prepare_data_plan_lesson()
+        case "webgen":
+            task_description, TaskProgram, trainset, valset = prepare_data_generate_website()
         case _:
-            task_description, TaskProgram, trainset, valset, requirement_path, prompt_path = "", None, [], [], "", ""
+            task_description, TaskProgram, trainset, valset = "", None, [], []
     
+    requirement_path = "data/requirements/" + task_name + ".json"
+    prompt_path = "data/prompts/" + task_name + ".json"
+
     prompt_paths = []
     if configs:
         requirement_path = configs.get("requirement_path") or requirement_path
         prompt_path = configs.get("prompt_path") or prompt_path
         prompt_paths = configs.get("prompt_paths") or []
 
+    def safe_load_json(path):
+        if not os.path.exists(path):
+            return {}
+        with open(path, "r") as f:
+            return json.load(f)
+
     if requirement_path:
-        with open(requirement_path, "r") as f:
-            requirements = json.load(f)
+        requirements = safe_load_json(requirement_path)
     else:
         requirements = {}
 
     if prompt_paths:
         prompts = {}
         for prompt_path in prompt_paths:
-            with open(prompt_path, "r") as f:
-                prompts.update(json.load(f))
-    elif prompt_path:
-        with open(prompt_path, "r") as f:
-            prompts = json.load(f)
+            prompts.update(safe_load_json(prompt_path))
     else:
-        prompts = {}
+        prompts = safe_load_json(prompt_path)
+    
+    if not prompts:
+        prompts = {"original": TaskProgram(lm=None).prompt}
 
     return task_description, TaskProgram, trainset, valset, requirements, prompts
 
@@ -369,6 +429,8 @@ def prepare_data(
 def load_data(task, model_name, prompt_name, task_program, datasets):
     loaded_datasets = {}
     for dataset_name, dataset in datasets.items():
+        if not os.path.exists(f"data/results/{task}"):
+            os.makedirs(f"data/results/{task}")
         if not os.path.exists(f"data/results/{task}/{model_name}_{prompt_name}_{dataset_name}.json"):
             print(f"Running model on {dataset_name} split...")
             loaded_datasets[dataset_name] = run_model(task_program, dataset, max_workers=32)

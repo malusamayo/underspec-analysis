@@ -679,16 +679,19 @@ if __name__ == "__main__":
         experiment = mlflow.set_experiment(args.experiment)
         print(experiment.experiment_id)
 
-    task = "commitpack"
+    # task = "commitpack"
     # task = "product"
     # task = "trip"
+    # task = "health"
+    # task = "education"
+    task = "webgen"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
 
     prompt_model = LM_DICT["gpt-4o"]
 
-    model_names = ["gpt-4o-mini", "gemini-1.5-flash", "llama3-2-11b-instruct"]
+    model_names = ["gpt-4o-mini", "gemini-2.0-flash", "llama3-2-11b-instruct"]
     prompt_name = "original"
 
     trainsets = []
@@ -718,6 +721,8 @@ if __name__ == "__main__":
     requirements_df.to_csv(f"data/requirements/{task}_prioritized_requirements.csv", index=False)
 
     print(json.dumps(requirements_df.to_dict(orient="records"), indent=4))
+    with open(f"data/requirements/{task}.json", "w") as f:
+        json.dump(requirements_df.to_dict(orient="records"), f, indent=4)
     exit(0)
 
 

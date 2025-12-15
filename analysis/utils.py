@@ -20,15 +20,21 @@ LM_DICT = {
     "gpt-4o-2024-05-13": dspy.LM('openai/gpt-4o-2024-05-13', temperature=1.0, max_tokens=4096),
     "gpt-4o-2024-08-06": dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, max_tokens=4096),
     "gpt-4o-2024-11-20": dspy.LM('openai/gpt-4o-2024-11-20', temperature=1.0, max_tokens=4096),
-    "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0, max_tokens=4096),
     "4o-eval": dspy.LM('openai/gpt-4o-2024-08-06', temperature=0, max_tokens=16384),
     "4o-mini-eval": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=0, max_tokens=16384),
+    "4.1-mini": dspy.LM('openai/gpt-4.1-mini', temperature=1.0, max_tokens=4096),
     "4.1-mini-eval": dspy.LM('openai/gpt-4.1-mini', temperature=0, max_tokens=16384),
-    "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=10000),
+    "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=16000),
     "llama3-70b": dspy.LM('bedrock/meta.llama3-70b-instruct-v1:0', temperature=0.6, max_tokens=2048),
     "llama3.1-70b": dspy.LM('bedrock/us.meta.llama3-1-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3-2-90b-instruct": dspy.LM('bedrock/us.meta.llama3-2-90b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3.3-70b": dspy.LM('bedrock/us.meta.llama3-3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
+    "gemini-2.5-flash": dspy.LM('vertex_ai/gemini-2.5-flash', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS")))), max_tokens=4096),
+    
+    # for elicitation
+    "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0, max_tokens=4096),
+    "gemini-2.0-flash": dspy.LM('vertex_ai/gemini-2.0-flash', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS")))), max_tokens=4096),
+    "llama3-2-11b-instruct": dspy.LM('bedrock/us.meta.llama3-2-11b-instruct-v1:0', temperature=1.0),
 }
 
 

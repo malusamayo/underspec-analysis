@@ -106,9 +106,12 @@ def generate_cyclic_designs(requirements, k):
 if __name__ == "__main__":
     lm = dspy.LM('openai/gpt-4o-2024-08-06', temperature=1.0, cache=False)
 
-    task = "commitpack"
+    # task = "commitpack"
     # task = "trip"
     # task = "product"
+    # task = "health"
+    # task = "education"
+    task = "webgen"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
@@ -119,15 +122,20 @@ if __name__ == "__main__":
     # random.seed(42)
     # random.shuffle(requirements)
     # print(json.dumps(requirements, indent=4))
+    # with open(f"data/requirements/{task}", "w") as f:
+    #     json.dump(requirements, f, indent=4)
     # exit(0)
 
     requirements = [requirement["requirement"] for requirement in requirements]
     
-    select_indices = generate_cyclic_designs(requirements, 20)
-    # select_indices = generate_pbdesign(requirements)
+    for n in [1, 5, 10, 19]:
+        select_indices = generate_cyclic_designs(requirements, n)
+        # select_indices = generate_pbdesign(requirements)
 
-    d = generate_fixes(task_description, requirements, select_indices)
-    print(json.dumps(d, indent=4))
+        d = generate_fixes(task_description, requirements, select_indices)
+        print(json.dumps(d, indent=4))
+        with open(f"data/prompts/" + task + f"_n{n}.json", "w") as f:
+            json.dump(d, f, indent=4)
 
     # d = remove_requirements(lm, prompt, requirements_base)
     # print(json.dumps(d, indent=4))

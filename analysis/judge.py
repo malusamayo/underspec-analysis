@@ -446,9 +446,12 @@ if __name__ == "__main__":
     parser.add_argument("--experiment", type=str, help="The name of the experiment to log to.")
     args = parser.parse_args()
 
-    task = "commitpack"
+    # task = "commitpack"
     # task = "product"
     # task = "trip"
+    # task = "health"
+    # task = "education"
+    task = "webgen"
     task_description, TaskProgram, trainset, valset, requirements, prompts = prepare_data(
         task_name=task,
     )
@@ -462,6 +465,10 @@ if __name__ == "__main__":
         requirement["evaluation_plan"] = result["evaluation_plan"]
         
     print(json.dumps(requirements, indent=4))
+    with open(f"data/requirements/{task}.json", "w") as f:
+        json.dump(requirements, f, indent=4)
+    
+    exit(0)
 
     # Run evaluation
     model_names = [
