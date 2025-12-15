@@ -1,5 +1,7 @@
-# Under-specification in LLM Uses
-This is a repository for analyzing the impacts of under-specification on LLM behaviors.
+# What Prompts Don’t Say: Understanding and Managing Underspecification in LLM Prompts
+This is a reproduction repository for analyzing the impacts of under-specification on LLM behaviors.
+
+Refer to the full experiment setup in the [paper](https://arxiv.org/abs/2505.13360).
 
 ## Data available
 We share all experiment configurations in `data/configs`, all prompts in `data/prompts`, all curated requirements in `data/requirements`, and the evaluation results [here](https://figshare.com/s/38acdc02f9cae8c39198).
