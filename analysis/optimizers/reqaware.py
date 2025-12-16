@@ -9,7 +9,7 @@ from ..utils import requirements_to_str
 
 logger = logging.getLogger(__name__)
 
-class ReqAwareOptimizer(Teleprompter):
+class BayesianOptimizer(Teleprompter):
     def __init__(
         self,
         task_description: str,
@@ -19,7 +19,7 @@ class ReqAwareOptimizer(Teleprompter):
         seed: Optional[int] = None,
     ):
         """
-        Initialize the ReqAwareOptimizer.
+        Initialize the BayesianOptimizer.
         
         Args:
             task_description: The description of the task to optimize for

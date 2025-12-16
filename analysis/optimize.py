@@ -8,7 +8,7 @@ import yaml
 
 from .optimizers.copro import COPRO
 from .optimizers.textgrad import TextGradOptimizer
-from .optimizers.reqaware import ReqAwareOptimizer
+from .optimizers.reqaware import BayesianOptimizer
 from .optimizers.openai import OpenAIPromptOptimizer
 
 from .load_data import prepare_data
@@ -81,8 +81,8 @@ def construct_optimizer(
         )
     elif optimizer_name == "openai":
         optimizer = OpenAIPromptOptimizer(seed=42)
-    elif optimizer_name == "reqaware":
-        optimizer = ReqAwareOptimizer(
+    elif optimizer_name == "bayesian":
+        optimizer = BayesianOptimizer(
             task_description=task_description,
             requirements=[requirement["requirement"] for requirement in local_requirements],
             evaluate=evaluate_requirements(local_requirements),
