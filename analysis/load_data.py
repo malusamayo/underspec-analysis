@@ -6,6 +6,7 @@ import litellm
 from functools import partial
 from copy import deepcopy
 from analysis.utils import run_model
+from .agent_eval import AgenticTaskProgram
 
 class TaskProgram:
     def __init__(self, prompt, input_key, lm, n=1):
@@ -359,6 +360,18 @@ def prepare_data_generate_website():
 
     return task_description, partial(TaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
+def prepare_data_generate_website_react():
+    data_path = "data/webgen.csv"
+    input_key = "instruction"
+
+    trainset, valset = prepare_dataset(data_path, input_key, data_size=200)
+
+    task_description = "Generate a React project based on the given specifications."
+
+    with open("data/prompts/reactdev.j2", "r") as f:
+        prompt = f.read()
+
+    return task_description, partial(AgenticTaskProgram, prompt=prompt, input_key=input_key), trainset, valset
 
 def prepare_data(
     task_name,
@@ -390,6 +403,8 @@ def prepare_data(
             task_description, TaskProgram, trainset, valset = prepare_data_plan_lesson()
         case "webgen":
             task_description, TaskProgram, trainset, valset = prepare_data_generate_website()
+        case "webgen_react":
+            task_description, TaskProgram, trainset, valset = prepare_data_generate_website_react()
         case _:
             task_description, TaskProgram, trainset, valset = "", None, [], []
     

@@ -5,7 +5,7 @@ import optuna
 from optuna.distributions import CategoricalDistribution
 import numpy as np
 from dspy.teleprompt.teleprompt import Teleprompter
-from ..utils import requirements_to_str
+from ..utils import construct_prompt
 
 logger = logging.getLogger(__name__)
 
@@ -16,6 +16,7 @@ class BayesianOptimizer(Teleprompter):
         requirements: List[str],
         evaluate: Any,
         num_trials: int = 30,
+        construct_prompt_fn: callable = construct_prompt,
         seed: Optional[int] = None,
     ):
         """
@@ -32,6 +33,7 @@ class BayesianOptimizer(Teleprompter):
         self.requirements = requirements
         self.evaluate = evaluate
         self.num_trials = num_trials
+        self.construct_prompt_fn = construct_prompt_fn
         self.seed = seed or random.randint(0, 1000)
         
         # Set random seeds
@@ -60,9 +62,10 @@ class BayesianOptimizer(Teleprompter):
         # Keep track of best program and score
         best_score = float("-inf")
         best_program = None
+        best_program_history = []
         
         def objective(trial):
-            nonlocal best_score, best_program
+            nonlocal best_score, best_program, best_program_history
             
             # Create a new candidate program
             candidate_program = program.deepcopy()
@@ -76,7 +79,9 @@ class BayesianOptimizer(Teleprompter):
             print(f"Selected requirements: {selected_requirements}")
 
             # Update program with selected requirements
-            candidate_program.prompt = self.task_description + requirements_to_str(selected_requirements)
+            candidate_program.prompt = self.construct_prompt_fn(self.task_description, selected_requirements)
+
+            print(f"Candidate prompt: {candidate_program.prompt}")
             
             # Evaluate the candidate program
             score, _ = self.evaluate(candidate_program, trainset)
@@ -86,6 +91,7 @@ class BayesianOptimizer(Teleprompter):
                 best_score = score
                 best_program = candidate_program.deepcopy()
                 print(f"New best score: {score}")
+            best_program_history.append((best_program.prompt, best_score))
             
             return score
         

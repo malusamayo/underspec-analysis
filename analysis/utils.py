@@ -1,7 +1,7 @@
 import dspy
 import litellm
 from typing import List, Any
-from concurrent.futures import ThreadPoolExecutor, as_completed
+from concurrent.futures import ProcessPoolExecutor, ThreadPoolExecutor, as_completed
 
 from sklearn.cluster import KMeans
 import os
@@ -24,13 +24,16 @@ LM_DICT = {
     "4o-mini-eval": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=0, max_tokens=16384),
     "4.1-mini": dspy.LM('openai/gpt-4.1-mini', temperature=1.0, max_tokens=4096),
     "4.1-mini-eval": dspy.LM('openai/gpt-4.1-mini', temperature=0, max_tokens=16384),
-    "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=16000),
+    "o3-mini": dspy.LM('openai/o3-mini', temperature=1.0, max_tokens=20000),
     "llama3-70b": dspy.LM('bedrock/meta.llama3-70b-instruct-v1:0', temperature=0.6, max_tokens=2048),
     "llama3.1-70b": dspy.LM('bedrock/us.meta.llama3-1-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3-2-90b-instruct": dspy.LM('bedrock/us.meta.llama3-2-90b-instruct-v1:0', temperature=0.6, max_tokens=4096),
     "llama3.3-70b": dspy.LM('bedrock/us.meta.llama3-3-70b-instruct-v1:0', temperature=0.6, max_tokens=4096),
-    "gemini-2.5-flash": dspy.LM('vertex_ai/gemini-2.5-flash', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS")))), max_tokens=4096),
+    "gemini-2.5-flash": dspy.LM('vertex_ai/gemini-2.5-flash', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS")))), max_tokens=16384),
     
+    # for case study
+    "qwen3-coder-30b-a3b": dspy.LM("bedrock/qwen.qwen3-coder-30b-a3b-v1:0", temperature=1.0, max_tokens=16384),
+
     # for elicitation
     "gpt-4o-mini": dspy.LM('openai/gpt-4o-mini-2024-07-18', temperature=1.0, max_tokens=4096),
     "gemini-2.0-flash": dspy.LM('vertex_ai/gemini-2.0-flash', temperature=1.0, vertex_credentials=json.dumps(json.load(open(os.environ.get("VERTEX_CREDENTIALS")))), max_tokens=4096),
@@ -63,11 +66,13 @@ def use_lm(lm, n=1):
         return wrapper
     return decorator
 
-def batch_inference(program, args_list, max_workers=32) -> List[Any]:
+def batch_inference(program, args_list, use_process=False, max_workers=32) -> List[Any]:
     futures = {}
     results = [None] * len(args_list)
+
+    execution_class = ThreadPoolExecutor if not use_process else ProcessPoolExecutor
     
-    with ThreadPoolExecutor(max_workers=max_workers) as executor:
+    with execution_class(max_workers=max_workers) as executor:
         for i, args in enumerate(args_list):
             future = executor.submit(
                 program,
@@ -81,11 +86,12 @@ def batch_inference(program, args_list, max_workers=32) -> List[Any]:
             results[index] = result
     return results
 
-def run_model(program, examples, max_workers=32):
+def run_model(program, examples, use_process=False, max_workers=32):
     examples = copy.deepcopy(examples)
     results = batch_inference(
         program,
         [example.inputs().toDict() for example in examples],
+        use_process=use_process,
         max_workers=max_workers,
     )
     for example, result in zip(examples, results):
@@ -166,3 +172,12 @@ def requirements_to_str(requirements):
     if len(requirements) == 0:
         return ""
     return "\n\nFollow the guideline below:\n" + "\n".join([f"- {req}" for req in requirements])
+
+def construct_prompt(task_description, requirements):
+    return task_description + requirements_to_str(requirements)
+
+def construct_prompt_removal(task_description, requirements):
+    for req in requirements:
+        assert req in task_description, f"Requirement '{req}' not found in task description."
+        task_description = task_description.replace(f"{req}\n", "").replace(f"{req}", "")
+    return task_description
